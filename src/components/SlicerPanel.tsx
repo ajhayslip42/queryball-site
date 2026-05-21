@@ -17,6 +17,7 @@ import type {
   Slicers, DistanceBucket, ScoreState, FieldZone, Quarter,
 } from '@/lib/slicers'
 import { TEAMS, POSITIONS } from '@/lib/nfl'
+import PlayerPicker from '@/components/PlayerPicker'
 import { ChevronDown, SlidersHorizontal, X, RotateCcw } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -99,7 +100,10 @@ function TriToggle({ value, onChange, label }: { value: Tri; onChange: (v: Tri) 
 
 /* -------------------- main panel -------------------- */
 
-export default function SlicerPanel({ groups }: { groups: Group[] }) {
+export default function SlicerPanel({ groups, showPlayerPicker = false }: {
+  groups: Group[]
+  showPlayerPicker?: boolean
+}) {
   const { slicers, update, reset } = useSlicers()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const active = countActive(slicers)
@@ -131,6 +135,13 @@ export default function SlicerPanel({ groups }: { groups: Group[] }) {
         </div>
 
         <div className="px-5 py-5 space-y-5">
+          {showPlayerPicker && (
+            <>
+              <PlayerPicker />
+              <div className="border-b border-railedge -mx-5" />
+            </>
+          )}
+
           {groups.includes('season') && (
             <GroupSection title="Season">
               <div className="flex flex-wrap gap-1">

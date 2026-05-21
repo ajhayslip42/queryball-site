@@ -2,18 +2,20 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, BookOpen, BarChart3 } from 'lucide-react'
 
 const DECKS = [
-  { idx: '01', slug: 'single-player',      title: 'Single Player Productivity', desc: 'The microscope. Pick a player, re-frame every number.' },
-  { idx: '02', slug: 'team-player',        title: 'Team Player Usage',          desc: 'Each team\'s touch, target, and snap distribution.' },
-  { idx: '03', slug: 'league-production',  title: 'League Productivity',        desc: 'Cross-league leaderboards, sliced honestly.' },
-  { idx: '04', slug: 'team-defense',       title: 'Team Defense (Against)',     desc: 'What each defense allows by personnel and situation.' },
-  { idx: '05', slug: 'team-tendencies',    title: 'Team Situational Tendencies',desc: 'Pass / run rates, personnel, tempo, by every game state.' },
-  { idx: '06', slug: 'league-defense',     title: 'League Defense Rankings',    desc: 'Predictive rankings, not cumulative scorebook fiction.' },
+  { idx: '01', slug: 'single-player',     title: 'Single Player',              desc: 'The microscope. Pick any player — the view re-shapes for their position.' },
+  { idx: '02', slug: 'team-qb',           title: 'Team — Quarterback',          desc: 'How each team uses its QB: dropbacks, target distribution, scramble rate.' },
+  { idx: '03', slug: 'team-rb',           title: 'Team — Running Backs',        desc: 'Carry distribution, goal-line work, third-down pass-catching roles.' },
+  { idx: '04', slug: 'team-wr',           title: 'Team — Wide Receivers',       desc: 'Target share, alignment, route concepts, who eats in which situations.' },
+  { idx: '05', slug: 'team-te',           title: 'Team — Tight Ends',           desc: 'In-line vs flexed snaps, route share, red-zone targets.' },
+  { idx: '06', slug: 'league-production', title: 'League Production',          desc: 'Cross-league leaderboards, sliced honestly. Filter by position to compare like-for-like.' },
+  { idx: '07', slug: 'team-defense',      title: 'Team Defense (Against)',     desc: 'What each defense allows, by position. Toggle QB / RB / WR / TE up top.' },
+  { idx: '08', slug: 'team-tendencies',   title: 'Team Situational Tendencies',desc: 'Pass / run rates, personnel, tempo, by every game state.' },
+  { idx: '09', slug: 'league-defense',    title: 'League Defense Rankings',    desc: 'Predictive rankings, not cumulative scorebook fiction.' },
 ]
 
 export default function Home() {
   return (
     <>
-      {/* Hero */}
       <section className="border-b border-line">
         <div className="max-w-[1400px] mx-auto px-6 py-20 lg:py-28 grid lg:grid-cols-12 gap-10 items-end">
           <div className="lg:col-span-7">
@@ -39,28 +41,27 @@ export default function Home() {
           </div>
           <div className="lg:col-span-5 lg:pl-8">
             <div className="space-y-5">
-              <ThesisCard step="Step 1" head={<>Outputs without context are <em>bar trivia.</em></>}
+              <ThesisCard head={<>Outputs without context are <em>decoration.</em></>}
                 sub="Cumulative season totals flatten the variance that decides every Sunday." />
-              <ThesisCard step="Step 2" head={<>Context leads to <em>understanding.</em></>}
+              <ThesisCard head={<>Context leads to <em>understanding.</em></>}
                 sub="Down, distance, score, weather, formation — the variables that change what a number means." />
-              <ThesisCard step="Step 3" head={<>Understanding leads to <em>action.</em></>}
+              <ThesisCard head={<>Understanding leads to <em>action.</em></>}
                 sub="A filterable read on the only stat that matters: the next one." />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Deck cards */}
       <section className="bg-cream border-b border-line">
         <div className="max-w-[1400px] mx-auto px-6 py-16">
           <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
             <div>
-              <p className="eyebrow mb-3">Six rollup decks</p>
+              <p className="eyebrow mb-3">Nine rollup decks · position-aware</p>
               <h2 className="font-display text-4xl md:text-5xl tracking-tight">The reports.</h2>
             </div>
             <p className="max-w-md text-sm text-muted">
-              Each deck contains five reports under shared slicers. Click a deck to load the slicer
-              panel and the full visual stack.
+              Each deck contains five reports under shared slicers. Pick a player on Single Player and
+              the view automatically re-shapes for their position.
             </p>
           </div>
 
@@ -79,7 +80,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Articles + Projections teaser */}
       <section className="bg-paper">
         <div className="max-w-[1400px] mx-auto px-6 py-16 grid md:grid-cols-2 gap-6">
           <Link to="/articles" className="qcard p-8 hover-grow block">
@@ -102,11 +102,10 @@ export default function Home() {
   )
 }
 
-function ThesisCard({ step, head, sub }: { step: string; head: React.ReactNode; sub: string }) {
+function ThesisCard({ head, sub }: { head: React.ReactNode; sub: string }) {
   return (
     <div className="qcard p-5">
-      <p className="eyebrow">{step}</p>
-      <p className="mt-2 font-display text-2xl leading-snug">{head}</p>
+      <p className="font-display text-2xl leading-snug">{head}</p>
       <p className="mt-2 text-sm text-muted">{sub}</p>
     </div>
   )

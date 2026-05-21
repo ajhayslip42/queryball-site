@@ -7,12 +7,15 @@ import Article from '@/pages/Article'
 import Projections from '@/pages/Projections'
 import NotFound from '@/pages/NotFound'
 
-import SinglePlayerDeck from '@/pages/decks/SinglePlayerDeck'
-import TeamPlayerDeck from '@/pages/decks/TeamPlayerDeck'
+import SinglePlayerDeck    from '@/pages/decks/SinglePlayerDeck'
+import TeamQBDeck          from '@/pages/decks/TeamQBDeck'
+import TeamRBDeck          from '@/pages/decks/TeamRBDeck'
+import TeamWRDeck          from '@/pages/decks/TeamWRDeck'
+import TeamTEDeck          from '@/pages/decks/TeamTEDeck'
 import LeagueProductionDeck from '@/pages/decks/LeagueProductionDeck'
-import TeamDefenseDeck from '@/pages/decks/TeamDefenseDeck'
-import TeamTendenciesDeck from '@/pages/decks/TeamTendenciesDeck'
-import LeagueDefenseDeck from '@/pages/decks/LeagueDefenseDeck'
+import TeamDefenseDeck     from '@/pages/decks/TeamDefenseDeck'
+import TeamTendenciesDeck  from '@/pages/decks/TeamTendenciesDeck'
+import LeagueDefenseDeck   from '@/pages/decks/LeagueDefenseDeck'
 
 export default function App() {
   return (
@@ -21,12 +24,15 @@ export default function App() {
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/decks/single-player"    element={<SinglePlayerDeck />} />
-          <Route path="/decks/team-player"      element={<TeamPlayerDeck />} />
-          <Route path="/decks/league-production"element={<LeagueProductionDeck />} />
-          <Route path="/decks/team-defense"     element={<TeamDefenseDeck />} />
-          <Route path="/decks/team-tendencies"  element={<TeamTendenciesDeck />} />
-          <Route path="/decks/league-defense"   element={<LeagueDefenseDeck />} />
+          <Route path="/decks/single-player"     element={<SinglePlayerDeck />} />
+          <Route path="/decks/team-qb"           element={<TeamQBDeck />} />
+          <Route path="/decks/team-rb"           element={<TeamRBDeck />} />
+          <Route path="/decks/team-wr"           element={<TeamWRDeck />} />
+          <Route path="/decks/team-te"           element={<TeamTEDeck />} />
+          <Route path="/decks/league-production" element={<LeagueProductionDeck />} />
+          <Route path="/decks/team-defense"      element={<TeamDefenseDeck />} />
+          <Route path="/decks/team-tendencies"   element={<TeamTendenciesDeck />} />
+          <Route path="/decks/league-defense"    element={<LeagueDefenseDeck />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:slug" element={<Article />} />
           <Route path="/projections" element={<Projections />} />

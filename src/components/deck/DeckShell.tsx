@@ -26,7 +26,7 @@ export type SlicerGroup = Parameters<typeof SlicerPanel>[0]['groups'][number]
 
 export default function DeckShell({
   title, intro, tabs, slicerGroups, deckIndex,
-  currentSubject,
+  currentSubject, showPlayerPicker = false,
 }: {
   title: string
   intro: ReactNode
@@ -34,6 +34,7 @@ export default function DeckShell({
   slicerGroups: SlicerGroup[]
   deckIndex: number
   currentSubject?: { label: string; sub?: string }
+  showPlayerPicker?: boolean
 }) {
   const [activeId, setActiveId] = useState(tabs[0]?.id)
   const active = tabs.find(t => t.id === activeId) ?? tabs[0]
@@ -90,7 +91,7 @@ export default function DeckShell({
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-12 lg:col-span-3">
             <div className="sticky top-20">
-              <SlicerPanel groups={slicerGroups} />
+              <SlicerPanel groups={slicerGroups} showPlayerPicker={showPlayerPicker} />
             </div>
           </div>
           <div className="col-span-12 lg:col-span-9 min-w-0">
