@@ -52,6 +52,7 @@ export default function DataTable<T extends Record<string, any>>({
           <tr>
             {columns.map(c => (
               <th key={String(c.key)}
+                className={clsx(dense && 'py-1 px-2 text-xs')}
                 style={{ width: c.width, textAlign: c.align ?? (c.numeric ? 'right' : 'left') }}>
                 <button
                   type="button"
@@ -70,7 +71,7 @@ export default function DataTable<T extends Record<string, any>>({
             <tr key={i}>
               {columns.map(c => (
                 <td key={String(c.key)}
-                  className={clsx(c.numeric && 'num', dense && 'py-1.5')}
+                  className={clsx(c.numeric && 'num', dense && 'py-1 px-2 text-xs')}
                   style={{ textAlign: c.align ?? (c.numeric ? 'right' : 'left') }}>
                   {c.format ? c.format(r[c.key as keyof T], r) : String(r[c.key as keyof T] ?? '–')}
                 </td>

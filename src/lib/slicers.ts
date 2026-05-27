@@ -10,69 +10,60 @@ import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 export type Tri = 'all' | 'yes' | 'no'
-export type ScoreState = 'trail9plus' | 'trail18' | 'tied' | 'lead18' | 'lead9plus'
+export type ScoreState =
+  | 'lose17' | 'lose9to16' | 'lose4to8' | 'lose1to3' | 'tied'
+  | 'win1to3' | 'win4to8' | 'win9to16' | 'win17'
 export type FieldZone = 'own1to20' | 'own21to50' | 'opp49to21' | 'redzone' | 'goalline'
 export type Quarter = '1' | '2' | '3' | '4' | 'OT'
-export type DistanceBucket = 'd1to3' | 'd4to6' | 'd7to9' | 'd10plus'
+export type DistanceBucket = 'd1to3' | 'd4to6' | 'd7to9' | 'd10' | 'd11plus'
+export type PassDepth = 'behindLOS' | 'short' | 'intermediate' | 'deep'
+export type Direction = 'left' | 'middle' | 'right'
 
 export type Slicers = {
-  // Always-on
   seasons: number[]
   weeks: number[]
   seasonType: 'regular' | 'postseason' | 'all'
 
-  // Player
   positions: string[]
   teams: string[]
   opponents: string[]
   playerIds: string[]
 
-  // Location
   homeAway: 'home' | 'away' | 'all'
 
-  // Down & distance
   downs: number[]
   distances: DistanceBucket[]
 
-  // Score & game state
   scoreStates: ScoreState[]
   quarters: Quarter[]
   twoMinute: Tri
   garbageTime: Tri
 
-  // Field position
   zones: FieldZone[]
 
-  // Formation
   shotgun: Tri
   noHuddle: Tri
-  personnel: string[]
-
-  // Play type
   playTypes: ('pass' | 'run' | 'special')[]
 
-  // Weather + stadium (advanced)
+  // Pass depth + direction (applies to any plays-based view)
+  passDepth: PassDepth[]
+  passDir: Direction[]
+
+  // Run direction
+  runDir: Direction[]
+
+  // Pass detail
+  pressure: Tri
+
+  // Weather + stadium
   roof: ('dome' | 'outdoors' | 'open' | 'closed')[]
   surface: ('grass' | 'turf')[]
   windRange: [number, number]
   tempRange: [number, number]
-  precip: Tri
-
-  // Pass detail
-  pressure: Tri
-  playAction: Tri
-  airYards: ('behindLOS' | '0to9' | '10to19' | '20plus')[]
-
-  // Run detail
-  runGap: ('left_end' | 'left_tackle' | 'left_guard' | 'middle' | 'right_guard' | 'right_tackle' | 'right_end')[]
-
-  // Vegas
-  spreadRange: [number, number]
-  totalRange: [number, number]
 }
 
 export const DEFAULTS: Slicers = {
-  seasons: [new Date().getFullYear() - 1],
+  seasons: [2024],
   weeks: [],
   seasonType: 'regular',
   positions: [],
@@ -85,35 +76,43 @@ export const DEFAULTS: Slicers = {
   scoreStates: [],
   quarters: [],
   twoMinute: 'all',
-  garbageTime: 'no',  // exclude garbage time by default
+  garbageTime: 'no',
   zones: [],
   shotgun: 'all',
   noHuddle: 'all',
-  personnel: [],
   playTypes: [],
+  passDepth: [],
+  passDir: [],
+  runDir: [],
+  pressure: 'all',
   roof: [],
   surface: [],
   windRange: [0, 40],
   tempRange: [-10, 110],
-  precip: 'all',
-  pressure: 'all',
-  playAction: 'all',
-  airYards: [],
-  runGap: [],
-  spreadRange: [-25, 25],
-  totalRange: [30, 65],
 }
+
+// Display labels (used by SlicerPanel + badges)
+export const DISTANCE_LABELS: Record<DistanceBucket, string> = {
+  d1to3: '1–3', d4to6: '4–6', d7to9: '7–9', d10: '10', d11plus: '11+',
+}
+export const SCORE_LABELS: Record<ScoreState, string> = {
+  lose17: 'Losing 17+', lose9to16: 'Losing 9–16', lose4to8: 'Losing 4–8', lose1to3: 'Losing 1–3',
+  tied: 'Tied',
+  win1to3: 'Winning 1–3', win4to8: 'Winning 4–8', win9to16: 'Winning 9–16', win17: 'Winning 17+',
+}
+export const DEPTH_LABELS: Record<PassDepth, string> = {
+  behindLOS: 'Behind LOS', short: 'Short (0–9)', intermediate: 'Intermediate (10–19)', deep: 'Deep (20+)',
+}
+export const DIR_LABELS: Record<Direction, string> = { left: 'Left', middle: 'Middle', right: 'Right' }
 
 // ---------------------------------------------------------------
 // URL <-> Slicers serialization
 // ---------------------------------------------------------------
-
 function encList(arr: any[]): string { return arr.join(',') }
 function decList<T>(s: string | null, parse: (v: string) => T): T[] {
   if (!s) return []
   return s.split(',').filter(Boolean).map(parse) as T[]
 }
-
 function encRange([lo, hi]: [number, number]): string { return `${lo}:${hi}` }
 function decRange(s: string | null, fallback: [number, number]): [number, number] {
   if (!s) return fallback
@@ -141,22 +140,20 @@ function encodeToParams(s: Slicers): URLSearchParams {
   if (s.zones.length)     p.set('zn', encList(s.zones))
   if (s.shotgun !== 'all') p.set('sg', s.shotgun)
   if (s.noHuddle !== 'all') p.set('nh', s.noHuddle)
-  if (s.personnel.length) p.set('per', encList(s.personnel))
   if (s.playTypes.length) p.set('pt', encList(s.playTypes))
+  if (s.passDepth.length) p.set('pd', encList(s.passDepth))
+  if (s.passDir.length)   p.set('pdir', encList(s.passDir))
+  if (s.runDir.length)    p.set('rdir', encList(s.runDir))
+  if (s.pressure !== 'all') p.set('prs', s.pressure)
   if (s.roof.length)      p.set('rf', encList(s.roof))
   if (s.surface.length)   p.set('sf', encList(s.surface))
-  if (s.precip !== 'all') p.set('pr', s.precip)
-  if (s.pressure !== 'all') p.set('prs', s.pressure)
-  if (s.playAction !== 'all') p.set('pa', s.playAction)
-  if (s.airYards.length)  p.set('ay', encList(s.airYards))
-  if (s.runGap.length)    p.set('rg', encList(s.runGap))
   return p
 }
 
 function decodeFromParams(p: URLSearchParams): Slicers {
   return {
     ...DEFAULTS,
-    seasons: decList(p.get('seasons'), Number) as number[] || DEFAULTS.seasons,
+    seasons: (decList(p.get('seasons'), Number) as number[]).length ? decList(p.get('seasons'), Number) as number[] : DEFAULTS.seasons,
     weeks: decList(p.get('weeks'), Number) as number[],
     seasonType: (p.get('st') as Slicers['seasonType']) || 'regular',
     positions: decList(p.get('pos'), String),
@@ -173,35 +170,28 @@ function decodeFromParams(p: URLSearchParams): Slicers {
     zones: decList(p.get('zn'), String) as FieldZone[],
     shotgun: (p.get('sg') as Tri) || 'all',
     noHuddle: (p.get('nh') as Tri) || 'all',
-    personnel: decList(p.get('per'), String),
     playTypes: decList(p.get('pt'), String) as Slicers['playTypes'],
+    passDepth: decList(p.get('pd'), String) as PassDepth[],
+    passDir: decList(p.get('pdir'), String) as Direction[],
+    runDir: decList(p.get('rdir'), String) as Direction[],
+    pressure: (p.get('prs') as Tri) || 'all',
     roof: decList(p.get('rf'), String) as Slicers['roof'],
     surface: decList(p.get('sf'), String) as Slicers['surface'],
-    precip: (p.get('pr') as Tri) || 'all',
-    pressure: (p.get('prs') as Tri) || 'all',
-    playAction: (p.get('pa') as Tri) || 'all',
-    airYards: decList(p.get('ay'), String) as Slicers['airYards'],
-    runGap: decList(p.get('rg'), String) as Slicers['runGap'],
   }
 }
 
 // ---------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------
-
 export function useSlicers() {
   const [search, setSearch] = useSearchParams()
   const slicers = useMemo(() => decodeFromParams(search), [search])
-
   const update = useCallback((patch: Partial<Slicers>) => {
-    const next = { ...slicers, ...patch }
-    setSearch(encodeToParams(next), { replace: true })
+    setSearch(encodeToParams({ ...slicers, ...patch }), { replace: true })
   }, [slicers, setSearch])
-
   const reset = useCallback(() => {
     setSearch(encodeToParams(DEFAULTS), { replace: true })
   }, [setSearch])
-
   return { slicers, update, reset }
 }
 
@@ -224,14 +214,12 @@ export function countActive(s: Slicers): number {
   if (s.zones.length) n++
   if (s.shotgun !== 'all') n++
   if (s.noHuddle !== 'all') n++
-  if (s.personnel.length) n++
   if (s.playTypes.length) n++
+  if (s.passDepth.length) n++
+  if (s.passDir.length) n++
+  if (s.runDir.length) n++
+  if (s.pressure !== 'all') n++
   if (s.roof.length) n++
   if (s.surface.length) n++
-  if (s.precip !== 'all') n++
-  if (s.pressure !== 'all') n++
-  if (s.playAction !== 'all') n++
-  if (s.airYards.length) n++
-  if (s.runGap.length) n++
   return n
 }

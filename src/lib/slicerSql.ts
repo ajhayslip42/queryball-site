@@ -1,17 +1,14 @@
 /**
  * Slicer → SQL.
  *
- * Turns the active Slicers (from the filter rail / URL) into SQL WHERE
- * fragments. Two targets:
- *   - playerWeekWhere(s)  → filters the weekly player-stats table
- *   - playsWhere(s)       → filters play-by-play (the full situational set)
- *
- * Everything returns a string beginning with " AND ..." (or '') so it can be
- * appended to a base WHERE. This is the literal mechanism behind QueryBall's
- * thesis: the same stat, sliced into context.
+ * Turns the active Slicers into SQL WHERE fragments for two targets:
+ *   - playerWeekWhere(s)  → weekly player-stats table
+ *   - playsWhere(s)       → play-by-play (full situational set)
+ * Each returns a string beginning with " AND ..." (or '').
  */
 
-import type { Slicers, DistanceBucket, ScoreState, FieldZone } from './slicers'
+import type { Slicers, DistanceBucket, ScoreState, FieldZone, PassDepth, Direction } from './slicers'
+import { SCORE_LABELS, DISTANCE_LABELS, DEPTH_LABELS, DIR_LABELS } from './slicers'
 
 const list = (xs: (string | number)[]) =>
   xs.map(x => (typeof x === 'number' ? x : `'${String(x).replace(/'/g, "''")}'`)).join(',')
@@ -21,8 +18,6 @@ function seasonType(s: Slicers): string {
   if (s.seasonType === 'postseason') return ` AND season_type = 'POST'`
   return ''
 }
-
-/* ---- shared (apply to both tables; same column names) ---- */
 function common(s: Slicers): string {
   let w = ''
   if (s.seasons.length) w += ` AND season IN (${list(s.seasons)})`
@@ -31,7 +26,6 @@ function common(s: Slicers): string {
   return w
 }
 
-/* ---- player_week ---- */
 export function playerWeekWhere(s: Slicers): string {
   let w = common(s)
   if (s.positions.length) w += ` AND position IN (${list(s.positions)})`
@@ -41,19 +35,23 @@ export function playerWeekWhere(s: Slicers): string {
   return w
 }
 
-/* ---- plays (situational) ---- */
 const DIST: Record<DistanceBucket, string> = {
   d1to3: 'ydstogo BETWEEN 1 AND 3',
   d4to6: 'ydstogo BETWEEN 4 AND 6',
   d7to9: 'ydstogo BETWEEN 7 AND 9',
-  d10plus: 'ydstogo >= 10',
+  d10: 'ydstogo = 10',
+  d11plus: 'ydstogo >= 11',
 }
 const SCORE: Record<ScoreState, string> = {
-  trail9plus: 'score_differential <= -9',
-  trail18: 'score_differential BETWEEN -18 AND -1',
+  lose17: 'score_differential <= -17',
+  lose9to16: 'score_differential BETWEEN -16 AND -9',
+  lose4to8: 'score_differential BETWEEN -8 AND -4',
+  lose1to3: 'score_differential BETWEEN -3 AND -1',
   tied: 'score_differential = 0',
-  lead18: 'score_differential BETWEEN 1 AND 18',
-  lead9plus: 'score_differential >= 9',
+  win1to3: 'score_differential BETWEEN 1 AND 3',
+  win4to8: 'score_differential BETWEEN 4 AND 8',
+  win9to16: 'score_differential BETWEEN 9 AND 16',
+  win17: 'score_differential >= 17',
 }
 const ZONE: Record<FieldZone, string> = {
   own1to20: 'yardline_100 BETWEEN 80 AND 99',
@@ -61,6 +59,12 @@ const ZONE: Record<FieldZone, string> = {
   opp49to21: 'yardline_100 BETWEEN 21 AND 49',
   redzone: 'yardline_100 <= 20',
   goalline: 'yardline_100 <= 5',
+}
+const DEPTH: Record<PassDepth, string> = {
+  behindLOS: 'air_yards < 0',
+  short: 'air_yards BETWEEN 0 AND 9',
+  intermediate: 'air_yards BETWEEN 10 AND 19',
+  deep: 'air_yards >= 20',
 }
 
 export function playsWhere(s: Slicers): string {
@@ -77,20 +81,22 @@ export function playsWhere(s: Slicers): string {
   }
   if (s.shotgun !== 'all') w += ` AND shotgun = ${s.shotgun === 'yes' ? 1 : 0}`
   if (s.noHuddle !== 'all') w += ` AND no_huddle = ${s.noHuddle === 'yes' ? 1 : 0}`
+  if (s.pressure !== 'all') w += ` AND qb_hit = ${s.pressure === 'yes' ? 1 : 0}`
   if (s.playTypes.length) {
-    const map: Record<string, string> = { pass: 'pass', run: 'run' }
-    const pts = s.playTypes.filter(p => map[p]).map(p => `'${map[p]}'`)
+    const pts = s.playTypes.filter(p => p === 'pass' || p === 'run').map(p => `'${p}'`)
     if (pts.length) w += ` AND play_type IN (${pts.join(',')})`
   }
+  if (s.passDepth.length) w += ` AND (${s.passDepth.map(d => DEPTH[d]).join(' OR ')})`
+  if (s.passDir.length) w += ` AND pass_location IN (${list(s.passDir)})`
+  if (s.runDir.length) w += ` AND run_location IN (${list(s.runDir)})`
   if (s.twoMinute === 'yes') w += ` AND half_seconds_remaining <= 120`
   if (s.twoMinute === 'no') w += ` AND half_seconds_remaining > 120`
-  // garbage-time exclusion: blowout in Q4 (approximation without win-prob col)
   if (s.garbageTime === 'no') w += ` AND NOT (qtr >= 4 AND abs(score_differential) > 21)`
   if (s.garbageTime === 'yes') w += ` AND (qtr >= 4 AND abs(score_differential) > 21)`
   return w
 }
 
-/** A short human description of the active slice, for chart subtitles. */
+/** Short human description of the active slice, for chart subtitles. */
 export function sliceLabel(s: Slicers): string {
   const parts: string[] = []
   parts.push(s.seasons.length ? s.seasons.join(', ') : 'all seasons')
@@ -98,5 +104,14 @@ export function sliceLabel(s: Slicers): string {
   parts.push(s.seasonType === 'all' ? 'REG+POST' : s.seasonType === 'postseason' ? 'POST' : 'REG')
   if (s.positions.length) parts.push(s.positions.join('/'))
   if (s.teams.length) parts.push(s.teams.join('/'))
+  if (s.opponents.length) parts.push(`vs ${s.opponents.join('/')}`)
+  if (s.downs.length) parts.push(`${s.downs.join('/')} dn`)
+  if (s.distances.length) parts.push(s.distances.map(d => DISTANCE_LABELS[d]).join('/') + ' to go')
+  if (s.scoreStates.length) parts.push(s.scoreStates.map(x => SCORE_LABELS[x]).join('/'))
+  if (s.zones.length) parts.push(s.zones.join('/'))
+  if (s.passDepth.length) parts.push(s.passDepth.map(d => DEPTH_LABELS[d]).join('/'))
+  if (s.passDir.length) parts.push(s.passDir.map(d => DIR_LABELS[d]).join('/') + ' pass')
+  if (s.runDir.length) parts.push(s.runDir.map(d => DIR_LABELS[d]).join('/') + ' run')
+  if (s.pressure !== 'all') parts.push(s.pressure === 'yes' ? 'under pressure' : 'clean pocket')
   return parts.join(' · ')
 }
