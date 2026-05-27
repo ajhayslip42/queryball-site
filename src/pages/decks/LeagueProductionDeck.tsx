@@ -206,6 +206,7 @@ function Efficiency() {
   const { slicers } = useSlicers()
   const pos = ['WR','TE','RB'].includes(slicers.positions[0]) ? slicers.positions[0] : 'WR'
   const where = playerWeekWhere({ ...slicers, positions: [pos] })
+  const minTgt = slicers.weeks.length ? 1 : 20
   const sql = `
     SELECT player_display_name nm, recent_team tm,
       sum(targets)::int tgt, sum(receptions)::int rec, sum(receiving_yards)::int yds,
@@ -214,7 +215,7 @@ function Efficiency() {
       round(sum(receptions)*100.0/nullif(sum(targets),0),1) catch_pct,
       round(avg(wopr),3) wopr, round(sum(receiving_epa),1) epa
     FROM player_week WHERE 1=1 ${where} AND position='${pos}'
-    GROUP BY 1,2 HAVING sum(targets) >= 20
+    GROUP BY 1,2 HAVING sum(targets) >= ${minTgt}
     ORDER BY epa DESC LIMIT 20`
   const q = useQuery<EffRow>(sql, [sql])
   const cols: Column<EffRow>[] = [

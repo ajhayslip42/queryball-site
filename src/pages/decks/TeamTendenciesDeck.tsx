@@ -31,12 +31,13 @@ export default function TeamTendenciesDeck() {
 function Splits() {
   const { slicers } = useSlicers()
   const w = playsWhere(slicers)
+  const minN = slicers.weeks.length ? 1 : 50
   const sql = `
     SELECT posteam tm,
       round(sum(pass_attempt)*100.0/nullif(sum(pass_attempt)+sum(rush_attempt),0),1) pass_rt,
       sum(pass_attempt)::int pass, sum(rush_attempt)::int rush
     FROM plays WHERE posteam IS NOT NULL AND (pass_attempt=1 OR rush_attempt=1) ${w}
-    GROUP BY 1 HAVING sum(pass_attempt)+sum(rush_attempt) > 50 ORDER BY pass_rt DESC`
+    GROUP BY 1 HAVING sum(pass_attempt)+sum(rush_attempt) >= ${minN} ORDER BY pass_rt DESC`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [
     { key: 'tm', label: 'Team' },
@@ -69,12 +70,13 @@ function Splits() {
 function Formation() {
   const { slicers } = useSlicers()
   const w = playsWhere(slicers)
+  const minN = slicers.weeks.length ? 1 : 50
   const sql = `
     SELECT posteam tm,
       round(count(*) FILTER(WHERE shotgun=1)*100.0/nullif(count(*),0),1) sg_rt,
       round(count(*) FILTER(WHERE no_huddle=1)*100.0/nullif(count(*),0),1) nh_rt
     FROM plays WHERE posteam IS NOT NULL AND (pass_attempt=1 OR rush_attempt=1) ${w}
-    GROUP BY 1 HAVING count(*) > 50 ORDER BY sg_rt DESC`
+    GROUP BY 1 HAVING count(*) >= ${minN} ORDER BY sg_rt DESC`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [
     { key: 'tm', label: 'Team' },
@@ -106,13 +108,14 @@ function Formation() {
 function ThirdDown() {
   const { slicers } = useSlicers()
   const w = playsWhere(slicers)
+  const minN = slicers.weeks.length ? 1 : 20
   const sql = `
     SELECT posteam tm,
       round(sum(first_down)*100.0/nullif(count(*),0),1) conv_rt,
       round(sum(pass_attempt)*100.0/nullif(sum(pass_attempt)+sum(rush_attempt),0),1) pass_rt,
       count(*) plays
     FROM plays WHERE posteam IS NOT NULL AND down=3 AND (pass_attempt=1 OR rush_attempt=1) ${w}
-    GROUP BY 1 HAVING count(*) > 20 ORDER BY conv_rt DESC`
+    GROUP BY 1 HAVING count(*) >= ${minN} ORDER BY conv_rt DESC`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [
     { key: 'tm', label: 'Team' },
