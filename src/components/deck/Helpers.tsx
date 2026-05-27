@@ -64,3 +64,33 @@ export function FormatPicker({ formats, active }: {
     </div>
   )
 }
+
+/** Skeleton shown inside a Tile while a real query runs. */
+export function TileLoader({ height = 240 }: { height?: number }) {
+  return (
+    <div className="animate-pulse rounded-lg bg-[#EEF2F4]" style={{ height }} />
+  )
+}
+
+/** Shown when a query returns no rows for the current slice. */
+export function NoData({ note }: { note?: string }) {
+  return (
+    <div className="qcard p-8 text-center">
+      <p className="font-display text-xl mb-1">No data for this slice</p>
+      <p className="text-sm text-muted max-w-md mx-auto">
+        {note ?? 'Loosen the filters in the rail — this combination of slicers returned no rows.'}
+      </p>
+    </div>
+  )
+}
+
+/** Wraps a query result: shows a loader, then a no-data state, then children. */
+export function QueryState<T>({ q, height, children }: {
+  q: { data: T[] | null; loading: boolean }
+  height?: number
+  children: (rows: T[]) => ReactNode
+}) {
+  if (q.loading || q.data == null) return <TileLoader height={height} />
+  if (q.data.length === 0) return <NoData />
+  return <>{children(q.data)}</>
+}

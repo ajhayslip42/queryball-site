@@ -1,16 +1,34 @@
 /**
  * DuckDB-WASM data layer.
  *
- * In production, this connects to DuckDB-WASM and loads the parquet files
- * shipped in /public/data/. For the iteration-3 reference build, queries
- * return mock rows when the parquet files aren't present, so the UI renders
- * cleanly even before the first data refresh.
+ * Loads the parquet files shipped in /public/data/ and exposes them as SQL
+ * views. Play-by-play is split into one file per season (plays_YYYY.parquet)
+ * to stay under Cloudflare's 25 MiB per-asset limit; we read the manifest and
+ * UNION the available seasons into a single `plays` view so queries don't have
+ * to care how many seasons exist.
  *
- * To enable real DuckDB queries, drop the parquet files into public/data/
- * (run `python scripts/refresh-data.py` to produce them).
+ * Tables exposed:
+ *   player_week  — weekly tidy player stats (the workhorse)
+ *   players      — roster metadata (gsis_id, position, headshot, ...)
+ *   games        — schedules, scores, weather, spreads
+ *   plays        — play-by-play, recent seasons, slimmed columns
+ *
+ * To refresh: run scripts/refresh-data.py, drop the new parquet into
+ * public/data/, and redeploy.
  */
 
 let _dbPromise: Promise<any> | null = null
+
+async function fetchSeasons(): Promise<number[]> {
+  try {
+    const res = await fetch('/data/plays_manifest.json')
+    if (!res.ok) return []
+    const json = await res.json()
+    return Array.isArray(json.seasons) ? json.seasons : []
+  } catch {
+    return []
+  }
+}
 
 async function getDb(): Promise<any> {
   if (_dbPromise) return _dbPromise
@@ -27,26 +45,33 @@ async function getDb(): Promise<any> {
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker)
       URL.revokeObjectURL(worker_url)
 
-      // Try to register the parquet files we ship.
+      const seasons = await fetchSeasons()
       const conn = await db.connect()
       try {
+        // Core tables — always present.
         await conn.query(`
-          CREATE VIEW IF NOT EXISTS plays AS
-            SELECT * FROM read_parquet('/data/plays.parquet');
           CREATE VIEW IF NOT EXISTS player_week AS
-            SELECT * FROM read_parquet('/data/player_week.parquet');
+            SELECT * FROM read_parquet('${location.origin}/data/player_week.parquet');
           CREATE VIEW IF NOT EXISTS players AS
-            SELECT * FROM read_parquet('/data/players.parquet');
+            SELECT * FROM read_parquet('${location.origin}/data/players.parquet');
           CREATE VIEW IF NOT EXISTS games AS
-            SELECT * FROM read_parquet('/data/games.parquet');
+            SELECT * FROM read_parquet('${location.origin}/data/games.parquet');
         `)
-      } catch (_) {
-        // Data files not present yet — that's fine for first deploy.
+        // Play-by-play — union whatever seasons the manifest lists.
+        if (seasons.length) {
+          const union = seasons
+            .map(y => `SELECT * FROM read_parquet('${location.origin}/data/plays_${y}.parquet')`)
+            .join(' UNION ALL ')
+          await conn.query(`CREATE VIEW IF NOT EXISTS plays AS ${union};`)
+        }
+      } catch (e) {
+        console.warn('Some data views could not be created — is public/data/ populated?', e)
+      } finally {
+        await conn.close()
       }
-      await conn.close()
       return db
     } catch (err) {
-      console.warn('DuckDB-WASM not available, using mock data layer.', err)
+      console.warn('DuckDB-WASM not available.', err)
       return null
     }
   })()
@@ -59,10 +84,13 @@ export async function query<T = any>(sql: string): Promise<T[]> {
   const conn = await db.connect()
   try {
     const result = await conn.query(sql)
-    const rows = result.toArray().map((r: any) => Object.fromEntries(
-      Object.keys(r).map(k => [k, r[k]])
-    ))
-    return rows as T[]
+    return result.toArray().map((r: any) =>
+      Object.fromEntries(Object.keys(r).map(k => {
+        const v = r[k]
+        // DuckDB returns BigInt for 64-bit ints; coerce to Number for charts.
+        return [k, typeof v === 'bigint' ? Number(v) : v]
+      }))
+    ) as T[]
   } finally {
     await conn.close()
   }
@@ -76,7 +104,5 @@ export function sqlString(value: string): string {
 /** SQL list helper — for IN (…) clauses. */
 export function sqlList(values: (string | number)[]): string {
   if (!values.length) return 'NULL'
-  return values
-    .map(v => (typeof v === 'number' ? String(v) : sqlString(v)))
-    .join(',')
+  return values.map(v => (typeof v === 'number' ? String(v) : sqlString(v))).join(',')
 }
