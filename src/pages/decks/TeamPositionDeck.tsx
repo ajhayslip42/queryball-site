@@ -8,7 +8,7 @@ import { MetricReport, metricsOf, selOf, miniColsOf, F, type MDef } from '@/comp
 import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
-import { playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel, thresholdHaving } from '@/lib/slicerSql'
 import { playerGameLog } from '@/lib/playerGameSql'
 
 type Pos = 'QB' | 'RB' | 'WR' | 'TE'
@@ -29,7 +29,7 @@ export default function TeamPositionDeck({ position, title, intro, deckIndex }: 
   ]
   return (
     <DeckShell title={title} intro={intro} tabs={tabs} deckIndex={deckIndex}
-      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage']} />
+      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage','threshold']} />
   )
 }
 
@@ -40,21 +40,21 @@ function prodDefs(pos: Pos): MDef[] {
     { key: 'att', label: 'Attempts', expr: 'sum(attempts)', f: 'int' }, { key: 'cmp', label: 'Completions', expr: 'sum(completions)', f: 'int' },
     { key: 'intc', label: 'INT', expr: 'sum(interceptions)', f: 'int' }, { key: 'fd', label: 'Pass 1st Downs', expr: 'sum(passing_first_downs)', f: 'int' },
     { key: 'ay', label: 'Air Yards', expr: 'sum(passing_air_yards)', f: 'int' }, { key: 'sk', label: 'Sacks', expr: 'sum(sacks)', f: 'int' },
-    { key: 'ry', label: 'Rush Yds', expr: 'sum(rushing_yards)', f: 'int' }, { key: 'ppr', label: 'PPR Pts', expr: 'sum(fantasy_points_ppr)', f: 'd1' },
+    { key: 'ry', label: 'Rush Yds', expr: 'sum(rushing_yards)', f: 'int' }, { key: 'yac', label: 'YAC', expr: 'sum(passing_yards_after_catch)', f: 'int' },
   ]
   if (pos === 'RB') return [
     { key: 'ry', label: 'Rush Yds', expr: 'sum(rushing_yards)', f: 'int' }, { key: 'car', label: 'Carries', expr: 'sum(carries)', f: 'int' },
     { key: 'rtd', label: 'Rush TD', expr: 'sum(rushing_tds)', f: 'int' }, { key: 'rfd', label: 'Rush 1st Downs', expr: 'sum(rushing_first_downs)', f: 'int' },
     { key: 'tgt', label: 'Targets', expr: 'sum(targets)', f: 'int' }, { key: 'rec', label: 'Receptions', expr: 'sum(receptions)', f: 'int' },
     { key: 'recy', label: 'Rec Yds', expr: 'sum(receiving_yards)', f: 'int' }, { key: 'recfd', label: 'Rec 1st Downs', expr: 'sum(receiving_first_downs)', f: 'int' },
-    { key: 'scrim', label: 'Scrimmage Yds', expr: 'sum(rushing_yards+receiving_yards)', f: 'int' }, { key: 'ppr', label: 'PPR Pts', expr: 'sum(fantasy_points_ppr)', f: 'd1' },
+    { key: 'scrim', label: 'Scrimmage Yds', expr: 'sum(rushing_yards+receiving_yards)', f: 'int' }, { key: 'touch', label: 'Touches', expr: 'sum(carries+receptions)', f: 'int' },
   ]
   return [
     { key: 'recy', label: 'Rec Yds', expr: 'sum(receiving_yards)', f: 'int' }, { key: 'tgt', label: 'Targets', expr: 'sum(targets)', f: 'int' },
     { key: 'rec', label: 'Receptions', expr: 'sum(receptions)', f: 'int' }, { key: 'rtd', label: 'Rec TD', expr: 'sum(receiving_tds)', f: 'int' },
     { key: 'fd', label: 'Rec 1st Downs', expr: 'sum(receiving_first_downs)', f: 'int' }, { key: 'ay', label: 'Air Yards', expr: 'sum(receiving_air_yards)', f: 'int' },
     { key: 'yac', label: 'YAC', expr: 'sum(receiving_yards_after_catch)', f: 'int' }, { key: 'epa', label: 'Rec EPA', expr: 'round(sum(receiving_epa),1)', f: 'd1' },
-    { key: 'fdpct', label: '1st Down / Tgt %', expr: 'round(sum(receiving_first_downs)*100.0/nullif(sum(targets),0),1)', f: 'pct' }, { key: 'ppr', label: 'PPR Pts', expr: 'sum(fantasy_points_ppr)', f: 'd1' },
+    { key: 'fdpct', label: '1st Down / Tgt %', expr: 'round(sum(receiving_first_downs)*100.0/nullif(sum(targets),0),1)', f: 'pct' }, { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
   ]
 }
 function rateDefs(pos: Pos): MDef[] {
@@ -63,21 +63,21 @@ function rateDefs(pos: Pos): MDef[] {
     { key: 'tdpct', label: 'TD %', expr: 'round(sum(passing_tds)*100.0/nullif(sum(attempts),0),1)', f: 'pct' }, { key: 'intpct', label: 'INT %', expr: 'round(sum(interceptions)*100.0/nullif(sum(attempts),0),1)', f: 'pct' },
     { key: 'fdpct', label: '1st Down %', expr: 'round(sum(passing_first_downs)*100.0/nullif(sum(attempts),0),1)', f: 'pct' }, { key: 'adot', label: 'aDOT', expr: 'round(sum(passing_air_yards)*1.0/nullif(sum(attempts),0),1)', f: 'd1' },
     { key: 'epa', label: 'Pass EPA', expr: 'round(sum(passing_epa),1)', f: 'd1' }, { key: 'skpct', label: 'Sack %', expr: 'round(sum(sacks)*100.0/nullif(sum(attempts)+sum(sacks),0),1)', f: 'pct' },
-    { key: 'ypg', label: 'Pass Y / Gm', expr: 'round(sum(passing_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' }, { key: 'ppg', label: 'PPR / Gm', expr: 'round(sum(fantasy_points_ppr)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
+    { key: 'ypg', label: 'Pass Y / Gm', expr: 'round(sum(passing_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' }, { key: 'tdg', label: 'Pass TD / Gm', expr: 'round(sum(passing_tds)*1.0/nullif(count(distinct season||week),0),2)', f: 'd2' },
   ]
   if (pos === 'RB') return [
     { key: 'ypc', label: 'Yards / Carry', expr: 'round(sum(rushing_yards)*1.0/nullif(sum(carries),0),2)', f: 'd2' }, { key: 'fdpct', label: 'Rush 1st Down %', expr: 'round(sum(rushing_first_downs)*100.0/nullif(sum(carries),0),1)', f: 'pct' },
     { key: 'repa', label: 'Rush EPA', expr: 'round(sum(rushing_epa),1)', f: 'd1' }, { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
     { key: 'ypr', label: 'Yards / Rec', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(receptions),0),1)', f: 'd1' }, { key: 'recepa', label: 'Rec EPA', expr: 'round(sum(receiving_epa),1)', f: 'd1' },
     { key: 'scrimg', label: 'Scrim / Gm', expr: 'round(sum(rushing_yards+receiving_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' }, { key: 'touchg', label: 'Touch / Gm', expr: 'round(sum(carries+receptions)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
-    { key: 'totfd', label: 'Total 1st Downs', expr: 'sum(rushing_first_downs+receiving_first_downs)', f: 'int' }, { key: 'ppg', label: 'PPR / Gm', expr: 'round(sum(fantasy_points_ppr)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
+    { key: 'totfd', label: 'Total 1st Downs', expr: 'sum(rushing_first_downs+receiving_first_downs)', f: 'int' }, { key: 'ydg', label: 'Scrim Y / Gm', expr: 'round(sum(rushing_yards+receiving_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
   ]
   return [
     { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' }, { key: 'ypr', label: 'Yards / Rec', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(receptions),0),1)', f: 'd1' },
     { key: 'ypt', label: 'Yards / Tgt', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(targets),0),2)', f: 'd2' }, { key: 'adot', label: 'aDOT', expr: 'round(sum(receiving_air_yards)*1.0/nullif(sum(targets),0),1)', f: 'd1' },
     { key: 'yacr', label: 'YAC / Rec', expr: 'round(sum(receiving_yards_after_catch)*1.0/nullif(sum(receptions),0),1)', f: 'd1' }, { key: 'fdpct', label: '1st Down / Tgt %', expr: 'round(sum(receiving_first_downs)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
     { key: 'epa', label: 'Rec EPA', expr: 'round(sum(receiving_epa),1)', f: 'd1' }, { key: 'ypg', label: 'Rec Y / Gm', expr: 'round(sum(receiving_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
-    { key: 'totfd', label: 'Total 1st Downs', expr: 'sum(receiving_first_downs)', f: 'int' }, { key: 'ppg', label: 'PPR / Gm', expr: 'round(sum(fantasy_points_ppr)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
+    { key: 'totfd', label: 'Total 1st Downs', expr: 'sum(receiving_first_downs)', f: 'int' }, { key: 'tdg', label: 'Rec TD / Gm', expr: 'round(sum(receiving_tds)*1.0/nullif(count(distinct season||week),0),2)', f: 'd2' },
   ]
 }
 
@@ -129,7 +129,7 @@ function Room({ pos }: { pos: Pos }) {
   const defs = prodDefs(pos)
   // Default the team in via a slicer override so all other filters still apply consistently.
   const teamS = slicers.teams.length ? slicers : { ...slicers, teams: [team] }
-  const sql = `SELECT player_display_name AS cat, ${selOf(defs)} FROM ${playerGameLog(teamS)} g WHERE "position"='${pos}' GROUP BY cat HAVING ${defs[0].expr} > 0 ORDER BY ${defs[0].key} DESC`
+  const sql = `SELECT player_display_name AS cat, ${selOf(defs)} FROM ${playerGameLog(teamS)} g WHERE "position"='${pos}' GROUP BY cat HAVING ${defs[0].expr} > 0 ${thresholdHaving(slicers)} ORDER BY ${defs[0].key} DESC`
   const q = useQuery<any>(sql, [sql])
   return (
     <div className="space-y-3">
@@ -209,21 +209,21 @@ function DataTab({ pos }: { pos: Pos }) {
       sum(carries)::int car, sum(rushing_yards)::int ry, sum(rushing_tds)::int rtd, sum(rushing_first_downs)::int rfd,
       sum(targets)::int tgt, sum(receptions)::int rec, sum(receiving_yards)::int recy, sum(receiving_tds)::int retd, sum(receiving_first_downs)::int recfd,
       round(sum(receiving_air_yards)*1.0/nullif(sum(targets),0),1) adot, sum(receiving_yards_after_catch)::int yac,
-      sum(receiving_air_yards)::int ay, round(sum(targets)*1.0/nullif(count(distinct game_id),0),1) tpg, round(sum(fantasy_points_ppr),1) ppr
-    FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' GROUP BY 1,2 HAVING count(distinct game_id)>0 ORDER BY ppr DESC LIMIT 80`
+      sum(receiving_air_yards)::int ay, round(sum(targets)*1.0/nullif(count(distinct game_id),0),1) tpg, (sum(passing_yards)+sum(rushing_yards)+sum(receiving_yards))::int tyd
+    FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' GROUP BY 1,2 HAVING count(distinct game_id)>0 ORDER BY tyd DESC LIMIT 80`
   const q = useQuery<any>(sql, [sql])
   const all: Column<any>[] = [
     { key: 'nm', label: 'Player' }, { key: 'tm', label: 'Tm' }, { key: 'g', label: 'G', numeric: true },
     { key: 'att', label: 'Att', numeric: true }, { key: 'py', label: 'PaYd', numeric: true }, { key: 'ptd', label: 'PaTD', numeric: true }, { key: 'intc', label: 'INT', numeric: true }, { key: 'pfd', label: 'Pa1D', numeric: true },
     { key: 'car', label: 'Car', numeric: true }, { key: 'ry', label: 'RuYd', numeric: true }, { key: 'rtd', label: 'RuTD', numeric: true }, { key: 'rfd', label: 'Ru1D', numeric: true },
     { key: 'tgt', label: 'Tgt', numeric: true }, { key: 'rec', label: 'Rec', numeric: true }, { key: 'recy', label: 'ReYd', numeric: true }, { key: 'retd', label: 'ReTD', numeric: true }, { key: 'recfd', label: 'Re1D', numeric: true },
-    { key: 'adot', label: 'aDOT', numeric: true, format: F.d1 }, { key: 'yac', label: 'YAC', numeric: true }, { key: 'ay', label: 'AirYd', numeric: true }, { key: 'tpg', label: 'Tgt/G', numeric: true, format: F.d1 }, { key: 'ppr', label: 'PPR', numeric: true, format: F.d1 },
+    { key: 'adot', label: 'aDOT', numeric: true, format: F.d1 }, { key: 'yac', label: 'YAC', numeric: true }, { key: 'ay', label: 'AirYd', numeric: true }, { key: 'tpg', label: 'Tgt/G', numeric: true, format: F.d1 }, { key: 'tyd', label: 'TotYd', numeric: true },
   ]
   const drop = pos === 'QB' ? ['tgt', 'rec', 'recy', 'retd', 'recfd', 'adot', 'yac', 'ay', 'tpg'] : pos === 'RB' ? ['att', 'py', 'ptd', 'intc', 'pfd', 'adot'] : ['att', 'py', 'ptd', 'intc', 'pfd', 'car', 'ry', 'rtd', 'rfd']
   const cols = all.filter(c => !drop.includes(String(c.key)))
   return (
     <Tile title={`Every ${pos} — packed metrics`} subtitle={`${sliceLabel(slicers)} · scroll horizontally`} span={12}>
-      <QueryState q={q} height={460}>{rows => <DataTable rows={rows} columns={cols} defaultSort={{ key: 'ppr', dir: 'desc' }} dense />}</QueryState>
+      <QueryState q={q} height={460}>{rows => <DataTable rows={rows} columns={cols} defaultSort={{ key: 'tyd', dir: 'desc' }} dense />}</QueryState>
     </Tile>
   )
 }

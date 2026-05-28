@@ -7,8 +7,8 @@
  * Each returns a string beginning with " AND ..." (or '').
  */
 
-import type { Slicers, DistanceBucket, ScoreState, FieldZone, PassDepth, Direction } from './slicers'
-import { SCORE_LABELS, DISTANCE_LABELS, DEPTH_LABELS, DIR_LABELS } from './slicers'
+import type { Slicers, DistanceBucket, ScoreState, FieldZone, PassDepth, Direction, ThreshKey } from './slicers'
+import { SCORE_LABELS, DISTANCE_LABELS, DEPTH_LABELS, DIR_LABELS, ZONE_LABELS, THRESH_LABELS } from './slicers'
 
 const list = (xs: (string | number)[]) =>
   xs.map(x => (typeof x === 'number' ? x : `'${String(x).replace(/'/g, "''")}'`)).join(',')
@@ -39,7 +39,8 @@ export function playerWeekWhere(s: Slicers): string {
 }
 
 const DIST: Record<DistanceBucket, string> = {
-  d1to3: 'ydstogo BETWEEN 1 AND 3',
+  d1: 'ydstogo = 1',
+  d2to3: 'ydstogo BETWEEN 2 AND 3',
   d4to6: 'ydstogo BETWEEN 4 AND 6',
   d7to9: 'ydstogo BETWEEN 7 AND 9',
   d10: 'ydstogo = 10',
@@ -64,10 +65,12 @@ const ZONE: Record<FieldZone, string> = {
   goalline: 'yardline_100 <= 5',
 }
 const DEPTH: Record<PassDepth, string> = {
-  behindLOS: 'air_yards < 0',
-  short: 'air_yards BETWEEN 0 AND 9',
-  intermediate: 'air_yards BETWEEN 10 AND 19',
-  deep: 'air_yards >= 20',
+  behindLOS: 'air_yards <= 0',
+  d1to5: 'air_yards BETWEEN 1 AND 5',
+  d6to10: 'air_yards BETWEEN 6 AND 10',
+  d11to15: 'air_yards BETWEEN 11 AND 15',
+  d16to25: 'air_yards BETWEEN 16 AND 25',
+  d26plus: 'air_yards >= 26',
 }
 
 export function playsWhere(s: Slicers): string {
@@ -102,6 +105,22 @@ export function playsWhere(s: Slicers): string {
   return w
 }
 
+/** Player usage thresholds → HAVING fragment on the reconstructed game-log.
+ * Applies to player-level aggregations only (leaderboards). Each bound that is
+ * set is enforced against the player's season total in the current slice. */
+const THRESH_COL: Record<ThreshKey, string> = {
+  passAtt: 'attempts', targets: 'targets', rushAtt: 'carries', rec: 'receptions',
+}
+export function thresholdHaving(s: Slicers): string {
+  const parts: string[] = []
+  ;(Object.keys(THRESH_COL) as ThreshKey[]).forEach(k => {
+    const [mn, mx] = s.thresholds[k]
+    if (mn != null) parts.push(`sum(${THRESH_COL[k]}) >= ${mn}`)
+    if (mx != null) parts.push(`sum(${THRESH_COL[k]}) <= ${mx}`)
+  })
+  return parts.length ? ' AND ' + parts.join(' AND ') : ''
+}
+
 /** Short human description of the active slice, for chart subtitles. */
 export function sliceLabel(s: Slicers): string {
   const parts: string[] = []
@@ -114,10 +133,16 @@ export function sliceLabel(s: Slicers): string {
   if (s.downs.length) parts.push(`${s.downs.join('/')} dn`)
   if (s.distances.length) parts.push(s.distances.map(d => DISTANCE_LABELS[d]).join('/') + ' to go')
   if (s.scoreStates.length) parts.push(s.scoreStates.map(x => SCORE_LABELS[x]).join('/'))
-  if (s.zones.length) parts.push(s.zones.join('/'))
+  if (s.zones.length) parts.push(s.zones.map(z => ZONE_LABELS[z]).join('/'))
   if (s.passDepth.length) parts.push(s.passDepth.map(d => DEPTH_LABELS[d]).join('/'))
   if (s.passDir.length) parts.push(s.passDir.map(d => DIR_LABELS[d]).join('/') + ' pass')
   if (s.runDir.length) parts.push(s.runDir.map(d => DIR_LABELS[d]).join('/') + ' run')
   if (s.pressure !== 'all') parts.push(s.pressure === 'yes' ? 'under pressure' : 'clean pocket')
+  ;(['passAtt','targets','rushAtt','rec'] as ThreshKey[]).forEach(k => {
+    const [mn, mx] = s.thresholds[k]
+    if (mn != null && mx != null) parts.push(`${mn}–${mx} ${THRESH_LABELS[k]}`)
+    else if (mn != null) parts.push(`${mn}+ ${THRESH_LABELS[k]}`)
+    else if (mx != null) parts.push(`≤${mx} ${THRESH_LABELS[k]}`)
+  })
   return parts.join(' · ')
 }

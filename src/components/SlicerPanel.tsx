@@ -10,9 +10,9 @@
 import { useState, type ReactNode } from 'react'
 import { useSlicers, countActive, type Tri } from '@/lib/slicers'
 import type {
-  Slicers, DistanceBucket, ScoreState, FieldZone, Quarter, PassDepth, Direction,
+  Slicers, DistanceBucket, ScoreState, FieldZone, Quarter, PassDepth, Direction, Threshold, ThreshKey,
 } from '@/lib/slicers'
-import { DISTANCE_LABELS, SCORE_LABELS, DEPTH_LABELS, DIR_LABELS } from '@/lib/slicers'
+import { DISTANCE_LABELS, SCORE_LABELS, DEPTH_LABELS, DIR_LABELS, ZONE_LABELS, THRESH_LABELS, thresholdsForPositions } from '@/lib/slicers'
 import { TEAMS, POSITIONS } from '@/lib/nfl'
 import PlayerPicker from '@/components/PlayerPicker'
 import { ChevronDown, SlidersHorizontal, X, RotateCcw } from 'lucide-react'
@@ -21,16 +21,11 @@ import clsx from 'clsx'
 export type Group =
   | 'season' | 'week' | 'position' | 'team' | 'opponent' | 'homeAway'
   | 'down' | 'distance' | 'qtr' | 'score' | 'zone' | 'garbage'
-  | 'shotgun' | 'noHuddle' | 'playType' | 'passDepth' | 'runDir' | 'pressure'
+  | 'shotgun' | 'noHuddle' | 'playType' | 'passDepth' | 'runDir' | 'pressure' | 'threshold'
 
 const SEASONS = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1)
 const PLAYOFF_WEEKS = [19, 20, 21, 22]
-
-const ZONE_LABEL: Record<FieldZone, string> = {
-  own1to20: 'Own 1–20', own21to50: 'Own 21–50', opp49to21: 'Opp 49–21',
-  redzone: 'Red zone', goalline: 'Goal line',
-}
 
 /* -------------------- atoms -------------------- */
 function GroupSection({ title, defaultOpen = true, children }:
@@ -61,6 +56,19 @@ function TriToggle({ value, onChange, label }: { value: Tri; onChange: (v: Tri) 
               value === v ? 'bg-accent text-paper' : 'text-muted hover:text-ink')}>{v}</button>
         ))}
       </div>
+    </div>
+  )
+}
+function ThreshRow({ label, value, onChange }: { label: string; value: Threshold; onChange: (v: Threshold) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-2 mb-1.5">
+      <span className="text-[11px] text-muted flex-1">{label}</span>
+      <input type="number" min={0} placeholder="min" value={value[0] ?? ''} aria-label={`${label} minimum`}
+        onChange={e => onChange([e.target.value === '' ? null : Number(e.target.value), value[1]])}
+        className="w-14 rounded border border-railedge bg-paper px-1.5 py-0.5 text-[11px] num" />
+      <input type="number" min={0} placeholder="max" value={value[1] ?? ''} aria-label={`${label} maximum`}
+        onChange={e => onChange([value[0], e.target.value === '' ? null : Number(e.target.value)])}
+        className="w-14 rounded border border-railedge bg-paper px-1.5 py-0.5 text-[11px] num" />
     </div>
   )
 }
@@ -185,7 +193,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
           {has('distance') && (
             <GroupSection title="Distance to go">
               <div className="flex flex-wrap gap-1">
-                {(['d1to3', 'd4to6', 'd7to9', 'd10', 'd11plus'] as DistanceBucket[]).map(d => (
+                {(['d1', 'd2to3', 'd4to6', 'd7to9', 'd10', 'd11plus'] as DistanceBucket[]).map(d => (
                   <Chip key={d} active={slicers.distances.includes(d)} onClick={() => toggle('distances', d)}>{DISTANCE_LABELS[d]}</Chip>
                 ))}
               </div>
@@ -206,7 +214,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             <GroupSection title="Field zone">
               <div className="flex flex-wrap gap-1">
                 {(['own1to20', 'own21to50', 'opp49to21', 'redzone', 'goalline'] as FieldZone[]).map(z => (
-                  <Chip key={z} active={slicers.zones.includes(z)} onClick={() => toggle('zones', z)}>{ZONE_LABEL[z]}</Chip>
+                  <Chip key={z} active={slicers.zones.includes(z)} onClick={() => toggle('zones', z)}>{ZONE_LABELS[z]}</Chip>
                 ))}
               </div>
             </GroupSection>
@@ -227,7 +235,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             <GroupSection title="Pass depth & direction">
               <span className="text-[11px] text-muted block mb-1">Depth of target</span>
               <div className="flex flex-wrap gap-1 mb-2">
-                {(['behindLOS', 'short', 'intermediate', 'deep'] as PassDepth[]).map(d => (
+                {(['behindLOS', 'd1to5', 'd6to10', 'd11to15', 'd16to25', 'd26plus'] as PassDepth[]).map(d => (
                   <Chip key={d} active={slicers.passDepth.includes(d)} onClick={() => toggle('passDepth', d)}>{DEPTH_LABELS[d]}</Chip>
                 ))}
               </div>
@@ -278,6 +286,20 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
           {has('garbage') && (
             <GroupSection title="Special situations" defaultOpen={false}>
               <TriToggle label="Exclude garbage time" value={slicers.garbageTime} onChange={v => update({ garbageTime: v })} />
+            </GroupSection>
+          )}
+
+          {has('threshold') && (
+            <GroupSection title="Usage thresholds" defaultOpen={false}>
+              <div className="flex items-center justify-end gap-2 mb-1">
+                <span className="text-[10px] text-muted w-14 text-center">min</span>
+                <span className="text-[10px] text-muted w-14 text-center">max</span>
+              </div>
+              {thresholdsForPositions(slicers.positions).map(k => (
+                <ThreshRow key={k} label={THRESH_LABELS[k]} value={slicers.thresholds[k]}
+                  onChange={v => update({ thresholds: { ...slicers.thresholds, [k]: v } })} />
+              ))}
+              <p className="text-[10px] text-muted mt-1.5 leading-snug">Keeps only players whose season total in the current slice falls in range — e.g. receivers with 40+ targets.</p>
             </GroupSection>
           )}
 
@@ -376,7 +398,7 @@ export function ActiveSlicerBadges() {
   for (const d of slicers.downs) badges.push({ label: `${d}${d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'} down`, clear: () => update({ downs: slicers.downs.filter(v => v !== d) }) })
   for (const d of slicers.distances) badges.push({ label: `${DISTANCE_LABELS[d]} to go`, clear: () => update({ distances: slicers.distances.filter(v => v !== d) }) })
   for (const s of slicers.scoreStates) badges.push({ label: SCORE_LABELS[s], clear: () => update({ scoreStates: slicers.scoreStates.filter(v => v !== s) }) })
-  for (const z of slicers.zones) badges.push({ label: ZONE_LABEL[z], clear: () => update({ zones: slicers.zones.filter(v => v !== z) }) })
+  for (const z of slicers.zones) badges.push({ label: ZONE_LABELS[z], clear: () => update({ zones: slicers.zones.filter(v => v !== z) }) })
   for (const q of slicers.quarters) badges.push({ label: q === 'OT' ? 'OT' : `Q${q}`, clear: () => update({ quarters: slicers.quarters.filter(v => v !== q) }) })
   if (slicers.twoMinute !== 'all') badges.push({ label: '2-minute', clear: () => update({ twoMinute: 'all' }) })
   for (const d of slicers.passDepth) badges.push({ label: DEPTH_LABELS[d], clear: () => update({ passDepth: slicers.passDepth.filter(v => v !== d) }) })
@@ -385,6 +407,13 @@ export function ActiveSlicerBadges() {
   if (slicers.pressure !== 'all') badges.push({ label: slicers.pressure === 'yes' ? 'Under pressure' : 'Clean pocket', clear: () => update({ pressure: 'all' }) })
   for (const t of slicers.playTypes) badges.push({ label: t, clear: () => update({ playTypes: slicers.playTypes.filter(v => v !== t) }) })
   if (slicers.shotgun !== 'all') badges.push({ label: slicers.shotgun === 'yes' ? 'Shotgun' : 'Under center', clear: () => update({ shotgun: 'all' }) })
+  ;(['passAtt', 'targets', 'rushAtt', 'rec'] as ThreshKey[]).forEach(k => {
+    const [mn, mx] = slicers.thresholds[k]
+    if (mn != null || mx != null) {
+      const lbl = mn != null && mx != null ? `${mn}–${mx} ${THRESH_LABELS[k]}` : mn != null ? `${mn}+ ${THRESH_LABELS[k]}` : `≤${mx} ${THRESH_LABELS[k]}`
+      badges.push({ label: lbl, clear: () => update({ thresholds: { ...slicers.thresholds, [k]: [null, null] } }) })
+    }
+  })
 
   if (!badges.length) return null
   return (

@@ -5,7 +5,7 @@
  */
 import { type DeckTab, Tile } from '@/components/deck/DeckShell'
 import DataTable, { type Column } from '@/components/DataTable'
-import { MetricReport, type Metric } from '@/components/deck/Panels'
+import { MetricReport, type Metric, autoType } from '@/components/deck/Panels'
 import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
@@ -21,7 +21,7 @@ const F = {
   epa: (v: number) => fmt.signed(v, 3), pct: (v: number) => `${fmt.num(v, 1)}%`,
 }
 type M = { key: string; label: string; expr: string; f: keyof typeof F }
-const metrics = (defs: M[]): Metric[] => defs.map(d => ({ key: d.key, label: d.label, fmt: F[d.f] }))
+const metrics = (defs: M[]): Metric[] => defs.map((d, i) => ({ key: d.key, label: d.label, fmt: F[d.f], type: autoType(d.f, i) }))
 const sel = (defs: M[]): string => defs.map(d => `${d.expr} AS ${d.key}`).join(', ')
 const miniCols = (catLabel: string, defs: M[]): Column<any>[] =>
   [{ key: 'cat', label: catLabel }, ...defs.map(d => ({ key: d.key, label: d.label, numeric: true, format: F[d.f] }))]
@@ -58,7 +58,7 @@ function pwProd(pos: Pos): M[] {
     { key: 'ay', label: 'Air Yards', expr: 'passing_air_yards', f: 'int' },
     { key: 'sk', label: 'Sacks', expr: 'sacks', f: 'int' },
     { key: 'ry', label: 'Rush Yds', expr: 'rushing_yards', f: 'int' },
-    { key: 'ppr', label: 'PPR Pts', expr: 'fantasy_points_ppr', f: 'd1' },
+    { key: 'cmp', label: 'Completions', expr: 'completions', f: 'int' },
   ]
   if (pos === 'RB') return [
     { key: 'ry', label: 'Rush Yds', expr: 'rushing_yards', f: 'int' },
@@ -70,7 +70,7 @@ function pwProd(pos: Pos): M[] {
     { key: 'recy', label: 'Rec Yds', expr: 'receiving_yards', f: 'int' },
     { key: 'recfd', label: 'Rec 1st Downs', expr: 'receiving_first_downs', f: 'int' },
     { key: 'td', label: 'Total TD', expr: 'rushing_tds+receiving_tds', f: 'int' },
-    { key: 'ppr', label: 'PPR Pts', expr: 'fantasy_points_ppr', f: 'd1' },
+    { key: 'scrim', label: 'Scrimmage Yds', expr: 'rushing_yards+receiving_yards', f: 'int' },
   ]
   return [
     { key: 'tgt', label: 'Targets', expr: 'targets', f: 'int' },
@@ -80,9 +80,9 @@ function pwProd(pos: Pos): M[] {
     { key: 'fd', label: 'Rec 1st Downs', expr: 'receiving_first_downs', f: 'int' },
     { key: 'ay', label: 'Air Yards', expr: 'receiving_air_yards', f: 'int' },
     { key: 'yac', label: 'YAC', expr: 'receiving_yards_after_catch', f: 'int' },
-    { key: 'tsh', label: 'Tgt Share %', expr: 'target_share*100', f: 'd1' },
-    { key: 'wopr', label: 'WOPR', expr: 'wopr', f: 'd2' },
-    { key: 'ppr', label: 'PPR Pts', expr: 'fantasy_points_ppr', f: 'd1' },
+    { key: 'ypr', label: 'Yds / Rec', expr: 'round(receiving_yards*1.0/nullif(receptions,0),1)', f: 'd1' },
+    { key: 'ypt', label: 'Yds / Tgt', expr: 'round(receiving_yards*1.0/nullif(targets,0),1)', f: 'd1' },
+    { key: 'td', label: 'Total TD', expr: 'receiving_tds', f: 'int' },
   ]
 }
 function pwRate(pos: Pos): M[] {
@@ -96,7 +96,7 @@ function pwRate(pos: Pos): M[] {
     { key: 'epa', label: 'Pass EPA', expr: 'round(passing_epa,2)', f: 'd2' },
     { key: 'skpct', label: 'Sack %', expr: 'round(sacks*100.0/nullif(attempts+sacks,0),1)', f: 'pct' },
     { key: 'repa', label: 'Rush EPA', expr: 'round(rushing_epa,2)', f: 'd2' },
-    { key: 'ppr', label: 'PPR Pts', expr: 'round(fantasy_points_ppr,1)', f: 'd1' },
+    { key: 'ypc2', label: 'Yds / Comp', expr: 'round(passing_yards*1.0/nullif(completions,0),1)', f: 'd1' },
   ]
   if (pos === 'RB') return [
     { key: 'ypc', label: 'Yards / Carry', expr: 'round(rushing_yards*1.0/nullif(carries,0),2)', f: 'd2' },
@@ -108,7 +108,7 @@ function pwRate(pos: Pos): M[] {
     { key: 'recepa', label: 'Rec EPA', expr: 'round(receiving_epa,2)', f: 'd2' },
     { key: 'touch', label: 'Touches', expr: 'carries+receptions', f: 'int' },
     { key: 'scrim', label: 'Scrimmage Yds', expr: 'rushing_yards+receiving_yards', f: 'int' },
-    { key: 'ppr', label: 'PPR Pts', expr: 'round(fantasy_points_ppr,1)', f: 'd1' },
+    { key: 'ypt2', label: 'Yds / Touch', expr: 'round((rushing_yards+receiving_yards)*1.0/nullif(carries+receptions,0),2)', f: 'd2' },
   ]
   return [
     { key: 'catch', label: 'Catch %', expr: 'round(receptions*100.0/nullif(targets,0),1)', f: 'pct' },
@@ -120,7 +120,7 @@ function pwRate(pos: Pos): M[] {
     { key: 'epa', label: 'Rec EPA', expr: 'round(receiving_epa,2)', f: 'd2' },
     { key: 'tdr', label: 'TD / Tgt %', expr: 'round(receiving_tds*100.0/nullif(targets,0),1)', f: 'pct' },
     { key: 'yacpct', label: 'YAC %', expr: 'round(receiving_yards_after_catch*100.0/nullif(receiving_yards,0),1)', f: 'pct' },
-    { key: 'ppr', label: 'PPR Pts', expr: 'round(fantasy_points_ppr,1)', f: 'd1' },
+    { key: 'aypt', label: 'Air Yds / Tgt', expr: 'round(receiving_air_yards*1.0/nullif(targets,0),1)', f: 'd1' },
   ]
 }
 /* ---- plays metric set (aggregated per split) ---- */
@@ -296,7 +296,7 @@ function DataTab({ player }: { player: Player }) {
       targets::int tgt, receptions::int rec, receiving_yards::int recy, receiving_tds::int retd, receiving_first_downs::int recfd,
       round(receiving_air_yards*1.0/nullif(targets,0),1) adot, receiving_yards_after_catch::int yac,
       receiving_air_yards::int reay, round(receiving_yards_after_catch*100.0/nullif(receiving_yards,0),1) yacpct,
-      round(receiving_epa,2) recepa, round(fantasy_points,1) std, round(fantasy_points_ppr,1) ppr
+      round(receiving_epa,2) recepa, (passing_tds+rushing_tds+receiving_tds)::int totd, (passing_yards+rushing_yards+receiving_yards)::int totyd
     FROM ${playerGameLog(slicers, { playerId: player.gsis_id })} g ORDER BY season DESC, week DESC`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [
@@ -305,7 +305,7 @@ function DataTab({ player }: { player: Player }) {
     { key: 'car', label: 'Car', numeric: true }, { key: 'ry', label: 'RuYd', numeric: true }, { key: 'rtd', label: 'RuTD', numeric: true }, { key: 'rfd', label: 'Ru1D', numeric: true }, { key: 'repa', label: 'RuEPA', numeric: true, format: F.d2 },
     { key: 'tgt', label: 'Tgt', numeric: true }, { key: 'rec', label: 'Rec', numeric: true }, { key: 'recy', label: 'ReYd', numeric: true }, { key: 'retd', label: 'ReTD', numeric: true }, { key: 'recfd', label: 'Re1D', numeric: true },
     { key: 'adot', label: 'aDOT', numeric: true, format: F.d1 }, { key: 'yac', label: 'YAC', numeric: true }, { key: 'reay', label: 'ReAirY', numeric: true }, { key: 'yacpct', label: 'YAC%', numeric: true, format: F.d1 }, { key: 'recepa', label: 'ReEPA', numeric: true, format: F.d2 },
-    { key: 'std', label: 'STD', numeric: true, format: F.d1 }, { key: 'ppr', label: 'PPR', numeric: true, format: F.d1 },
+    { key: 'totd', label: 'TotTD', numeric: true }, { key: 'totyd', label: 'TotYd', numeric: true },
   ]
   return (
     <Tile title="Everything — weekly, every metric" subtitle={`${player.name} · ${sliceLabel(slicers)} · scroll horizontally for all columns`} span={12}>

@@ -42,8 +42,8 @@ function allowedDefs(pos: Pos): MDef[] {
   const td = pos === 'QB' ? 'passing_tds' : pos === 'RB' ? 'rushing_tds' : 'receiving_tds'
   const fd = pos === 'QB' ? 'passing_first_downs' : pos === 'RB' ? 'rushing_first_downs' : 'receiving_first_downs'
   const g = 'nullif(count(distinct season||week),0)'
+  const epa = pos === 'QB' ? 'passing_epa' : pos === 'RB' ? 'rushing_epa' : 'receiving_epa'
   return [
-    { key: 'fppg', label: 'PPR / Gm Allowed', expr: `round(sum(fantasy_points_ppr)/${g},1)`, f: 'd1' },
     { key: 'ypg', label: 'Yds / Gm Allowed', expr: `round(sum(${yd})/${g},1)`, f: 'd1' },
     { key: 'tdg', label: 'TD / Gm Allowed', expr: `round(sum(${td})/${g},2)`, f: 'd2' },
     { key: 'fdg', label: '1st Downs / Gm', expr: `round(sum(${fd})/${g},1)`, f: 'd1' },
@@ -51,7 +51,8 @@ function allowedDefs(pos: Pos): MDef[] {
     { key: 'tottd', label: 'Total TD Allowed', expr: `sum(${td})`, f: 'int' },
     { key: 'totfd', label: 'Total 1st Downs', expr: `sum(${fd})`, f: 'int' },
     { key: 'tgtg', label: pos === 'QB' ? 'Att / Gm' : pos === 'RB' ? 'Car / Gm' : 'Tgt / Gm', expr: `round(sum(${pos === 'QB' ? 'attempts' : pos === 'RB' ? 'carries' : 'targets'})/${g},1)`, f: 'd1' },
-    { key: 'fpts', label: 'Total PPR Allowed', expr: 'round(sum(fantasy_points_ppr),1)', f: 'd1' },
+    { key: 'ypo', label: pos === 'QB' ? 'Yds / Att' : pos === 'RB' ? 'Yds / Carry' : 'Yds / Tgt', expr: `round(sum(${yd})*1.0/nullif(sum(${pos === 'QB' ? 'attempts' : pos === 'RB' ? 'carries' : 'targets'}),0),2)`, f: 'd2' },
+    { key: 'epa', label: 'EPA Allowed', expr: `round(sum(${epa}),1)`, f: 'd1' },
     { key: 'gms', label: 'Games', expr: 'count(distinct season||week)', f: 'int' },
   ]
 }
@@ -71,7 +72,7 @@ function Allowed({ pos, setPos }: { pos: Pos; setPos: (p: Pos) => void }) {
         </div>
       </div>
       <MetricReport loading={q.loading} title={`Allowed to ${pos}s`} subtitle={`Lower = tougher · ${sliceLabel(slicers)}`}
-        mini={{ rows: q.data ?? [], cols: miniColsOf('Defense', defs), sort: { key: 'fppg', dir: 'asc' }, caption: `Per-game and totals allowed to ${pos}s` }}
+        mini={{ rows: q.data ?? [], cols: miniColsOf('Defense', defs), sort: { key: 'ypg', dir: 'desc' }, caption: `Per-game and totals allowed to ${pos}s` }}
         panels={[{ rows: q.data ?? [], categoryKey: 'cat', metrics: metricsOf(defs) }]} />
     </div>
   )

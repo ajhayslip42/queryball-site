@@ -171,3 +171,42 @@ export function ScatterTile({ data, xKey, yKey, zKey, height = 240, color = PALE
     </ResponsiveContainer>
   )
 }
+
+const CBAR_RING = [PALETTE.accent, PALETTE.accent2, PALETTE.ok, PALETTE.bad, PALETTE.cool, '#9AAEB8', '#C98A3B']
+
+/* ------- Colored Bar: one color per category, with a legend (e.g. by down) ------- */
+export function ColoredBarTile({ data, xKey = 'name', yKey = 'value', height = 220, colors = CBAR_RING, formatY, showLegend = true }: {
+  data: any[]; xKey?: string; yKey?: string; height?: number; colors?: string[]; formatY?: (v: number) => string; showLegend?: boolean
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} margin={{ top: 6, right: 6, left: -16, bottom: 0 }}>
+        <CartesianGrid stroke={GRID} vertical={false} />
+        <XAxis dataKey={xKey} {...axisProps} />
+        <YAxis {...axisProps} tickFormatter={formatY} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(97,145,165,0.08)' }} />
+        <Bar dataKey={yKey} radius={[3, 3, 0, 0]}>
+          {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
+        </Bar>
+      </BarChart>
+      {/* legend rendered by caller when needed */}
+    </ResponsiveContainer>
+  )
+}
+
+/* ------- Horizontal Bar: good for ranked categories with long labels ------- */
+export function HBarTile({ data, xKey = 'name', yKey = 'value', height = 220, color = PALETTE.accent2, formatX }: {
+  data: any[]; xKey?: string; yKey?: string; height?: number; color?: string; formatX?: (v: number) => string
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} layout="vertical" margin={{ top: 6, right: 10, left: 6, bottom: 0 }}>
+        <CartesianGrid stroke={GRID} horizontal={false} />
+        <XAxis type="number" {...axisProps} tickFormatter={formatX} />
+        <YAxis type="category" dataKey={xKey} width={64} {...axisProps} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(97,145,165,0.08)' }} />
+        <Bar dataKey={yKey} fill={color} radius={[0, 3, 3, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}

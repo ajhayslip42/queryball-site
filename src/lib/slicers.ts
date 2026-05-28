@@ -15,9 +15,26 @@ export type ScoreState =
   | 'win1to3' | 'win4to8' | 'win9to16' | 'win17'
 export type FieldZone = 'own1to20' | 'own21to50' | 'opp49to21' | 'redzone' | 'goalline'
 export type Quarter = '1' | '2' | '3' | '4' | 'OT'
-export type DistanceBucket = 'd1to3' | 'd4to6' | 'd7to9' | 'd10' | 'd11plus'
-export type PassDepth = 'behindLOS' | 'short' | 'intermediate' | 'deep'
+export type DistanceBucket = 'd1' | 'd2to3' | 'd4to6' | 'd7to9' | 'd10' | 'd11plus'
+export type PassDepth = 'behindLOS' | 'd1to5' | 'd6to10' | 'd11to15' | 'd16to25' | 'd26plus'
 export type Direction = 'left' | 'middle' | 'right'
+
+// Usage thresholds — filter players by season totals (applied as HAVING on
+// player-level aggregations). Each is [min, max]; null means no bound.
+export type ThreshKey = 'passAtt' | 'targets' | 'rushAtt' | 'rec'
+export type Threshold = [number | null, number | null]
+export const THRESH_LABELS: Record<ThreshKey, string> = {
+  passAtt: 'Pass Attempts', targets: 'Targets', rushAtt: 'Rush Attempts', rec: 'Receptions',
+}
+// Which thresholds to surface for a given position selection (UI only — the SQL
+// applies any bound that is set regardless).
+export function thresholdsForPositions(positions: string[]): ThreshKey[] {
+  const p = positions.length === 1 ? positions[0] : null
+  if (p === 'QB') return ['passAtt', 'rushAtt']
+  if (p === 'RB') return ['rushAtt', 'targets', 'rec']
+  if (p === 'WR' || p === 'TE') return ['targets', 'rec']
+  return ['passAtt', 'targets', 'rushAtt', 'rec']
+}
 
 export type Slicers = {
   seasons: number[]
@@ -55,6 +72,9 @@ export type Slicers = {
   // Pass detail
   pressure: Tri
 
+  // Usage thresholds (player season totals)
+  thresholds: Record<ThreshKey, Threshold>
+
   // Weather + stadium
   roof: ('dome' | 'outdoors' | 'open' | 'closed')[]
   surface: ('grass' | 'turf')[]
@@ -63,7 +83,7 @@ export type Slicers = {
 }
 
 export const DEFAULTS: Slicers = {
-  seasons: [2024],
+  seasons: [2025],
   weeks: [],
   seasonType: 'regular',
   positions: [],
@@ -85,6 +105,7 @@ export const DEFAULTS: Slicers = {
   passDir: [],
   runDir: [],
   pressure: 'all',
+  thresholds: { passAtt: [null, null], targets: [null, null], rushAtt: [null, null], rec: [null, null] },
   roof: [],
   surface: [],
   windRange: [0, 40],
@@ -93,7 +114,11 @@ export const DEFAULTS: Slicers = {
 
 // Display labels (used by SlicerPanel + badges)
 export const DISTANCE_LABELS: Record<DistanceBucket, string> = {
-  d1to3: '1–3', d4to6: '4–6', d7to9: '7–9', d10: '10', d11plus: '11+',
+  d1: '1', d2to3: '2–3', d4to6: '4–6', d7to9: '7–9', d10: '10', d11plus: '11+',
+}
+export const ZONE_LABELS: Record<FieldZone, string> = {
+  own1to20: 'Own 1–20', own21to50: 'Own 21–50', opp49to21: 'Opp 49–21',
+  redzone: 'Red Zone (≤ opp 20)', goalline: 'Goal Line (≤ opp 5)',
 }
 export const SCORE_LABELS: Record<ScoreState, string> = {
   lose17: 'Losing 17+', lose9to16: 'Losing 9–16', lose4to8: 'Losing 4–8', lose1to3: 'Losing 1–3',
@@ -101,7 +126,7 @@ export const SCORE_LABELS: Record<ScoreState, string> = {
   win1to3: 'Winning 1–3', win4to8: 'Winning 4–8', win9to16: 'Winning 9–16', win17: 'Winning 17+',
 }
 export const DEPTH_LABELS: Record<PassDepth, string> = {
-  behindLOS: 'Behind LOS', short: 'Short (0–9)', intermediate: 'Intermediate (10–19)', deep: 'Deep (20+)',
+  behindLOS: 'Behind LOS', d1to5: '1–5', d6to10: '6–10', d11to15: '11–15', d16to25: '16–25', d26plus: '26+',
 }
 export const DIR_LABELS: Record<Direction, string> = { left: 'Left', middle: 'Middle', right: 'Right' }
 
@@ -119,6 +144,17 @@ function decRange(s: string | null, fallback: [number, number]): [number, number
   const [lo, hi] = s.split(':').map(Number)
   if (isNaN(lo) || isNaN(hi)) return fallback
   return [lo, hi]
+}
+function encThresh([mn, mx]: Threshold): string | null {
+  if (mn == null && mx == null) return null
+  return `${mn ?? ''}-${mx ?? ''}`
+}
+function decThresh(s: string | null): Threshold {
+  if (!s) return [null, null]
+  const [a, b] = s.split('-')
+  const mn = a === '' || a == null ? null : Number(a)
+  const mx = b === '' || b == null ? null : Number(b)
+  return [mn != null && isNaN(mn) ? null : mn, mx != null && isNaN(mx) ? null : mx]
 }
 
 function encodeToParams(s: Slicers): URLSearchParams {
@@ -145,6 +181,10 @@ function encodeToParams(s: Slicers): URLSearchParams {
   if (s.passDir.length)   p.set('pdir', encList(s.passDir))
   if (s.runDir.length)    p.set('rdir', encList(s.runDir))
   if (s.pressure !== 'all') p.set('prs', s.pressure)
+  { const v = encThresh(s.thresholds.passAtt); if (v) p.set('thpa', v) }
+  { const v = encThresh(s.thresholds.targets); if (v) p.set('thtg', v) }
+  { const v = encThresh(s.thresholds.rushAtt); if (v) p.set('thra', v) }
+  { const v = encThresh(s.thresholds.rec);     if (v) p.set('thrc', v) }
   if (s.roof.length)      p.set('rf', encList(s.roof))
   if (s.surface.length)   p.set('sf', encList(s.surface))
   return p
@@ -175,6 +215,12 @@ function decodeFromParams(p: URLSearchParams): Slicers {
     passDir: decList(p.get('pdir'), String) as Direction[],
     runDir: decList(p.get('rdir'), String) as Direction[],
     pressure: (p.get('prs') as Tri) || 'all',
+    thresholds: {
+      passAtt: decThresh(p.get('thpa')),
+      targets: decThresh(p.get('thtg')),
+      rushAtt: decThresh(p.get('thra')),
+      rec: decThresh(p.get('thrc')),
+    },
     roof: decList(p.get('rf'), String) as Slicers['roof'],
     surface: decList(p.get('sf'), String) as Slicers['surface'],
   }
@@ -219,6 +265,7 @@ export function countActive(s: Slicers): number {
   if (s.passDir.length) n++
   if (s.runDir.length) n++
   if (s.pressure !== 'all') n++
+  for (const t of [s.thresholds.passAtt, s.thresholds.targets, s.thresholds.rushAtt, s.thresholds.rec]) if (t[0] != null || t[1] != null) n++
   if (s.roof.length) n++
   if (s.surface.length) n++
   return n

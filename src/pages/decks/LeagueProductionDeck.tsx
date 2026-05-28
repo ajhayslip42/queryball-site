@@ -6,11 +6,11 @@
  */
 import DeckShell, { Tile, type DeckTab } from '@/components/deck/DeckShell'
 import DataTable, { type Column } from '@/components/DataTable'
-import { MetricReport, metricsOf, selOf, F, type MDef } from '@/components/deck/Panels'
+import { MetricReport, metricsOf, selOf, F, autoType, type MDef } from '@/components/deck/Panels'
 import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
-import { playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel, thresholdHaving } from '@/lib/slicerSql'
 import { playerGameLog } from '@/lib/playerGameSql'
 
 type Pos = 'QB' | 'RB' | 'WR' | 'TE'
@@ -28,7 +28,7 @@ function prodDefs(pos: Pos): MDef[] {
     { key: 'comp', label: 'Comp %', expr: 'round(sum(completions)*100.0/nullif(sum(attempts),0),1)', f: 'pct' },
     { key: 'ypg', label: 'Pass Yds / Gm', expr: 'round(sum(passing_yards)*1.0/count(*),1)', f: 'd1' },
     { key: 'tdg', label: 'Pass TD / Gm', expr: 'round(sum(passing_tds)*1.0/count(*),2)', f: 'd2' },
-    { key: 'ppr', label: 'PPR (total)', expr: 'round(sum(fantasy_points_ppr),1)', f: 'd1' },
+    { key: 'ay', label: 'Air Yards', expr: 'sum(passing_air_yards)::int', f: 'int' },
     { key: 'g', label: 'Games', expr: 'count(*)', f: 'int' },
   ]
   if (pos === 'RB') return [
@@ -40,7 +40,7 @@ function prodDefs(pos: Pos): MDef[] {
     { key: 'recy', label: 'Rec Yds', expr: 'sum(receiving_yards)::int', f: 'int' },
     { key: 'ypc', label: 'Yds / Carry', expr: 'round(sum(rushing_yards)*1.0/nullif(sum(carries),0),2)', f: 'd2' },
     { key: 'scrim', label: 'Scrimmage Yds', expr: '(sum(rushing_yards)+sum(receiving_yards))::int', f: 'int' },
-    { key: 'ppr', label: 'PPR (total)', expr: 'round(sum(fantasy_points_ppr),1)', f: 'd1' },
+    { key: 'totfd', label: 'Total 1st Downs', expr: '(sum(rushing_first_downs)+sum(receiving_first_downs))::int', f: 'int' },
     { key: 'g', label: 'Games', expr: 'count(*)', f: 'int' },
   ]
   return [
@@ -52,7 +52,7 @@ function prodDefs(pos: Pos): MDef[] {
     { key: 'ypg', label: 'Rec Yds / Gm', expr: 'round(sum(receiving_yards)*1.0/count(*),1)', f: 'd1' },
     { key: 'ypr', label: 'Yds / Rec', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(receptions),0),1)', f: 'd1' },
     { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
-    { key: 'ppr', label: 'PPR (total)', expr: 'round(sum(fantasy_points_ppr),1)', f: 'd1' },
+    { key: 'ay', label: 'Air Yards', expr: 'sum(receiving_air_yards)::int', f: 'int' },
     { key: 'g', label: 'Games', expr: 'count(*)', f: 'int' },
   ]
 }
@@ -144,14 +144,14 @@ function Usage() {
       sum(carries) car, sum(rushing_yards) ry, sum(targets) tgt, sum(receptions) rec, sum(receiving_yards) recy, sum(receiving_air_yards) ray,
       sum(sum(targets)) OVER (PARTITION BY recent_team) team_tgt,
       sum(sum(receiving_air_yards)) OVER (PARTITION BY recent_team) team_ay
-    FROM ${playerGameLog(slicers)} g GROUP BY player_display_name, "position", recent_team`
+    FROM ${playerGameLog(slicers)} g GROUP BY player_display_name, "position", recent_team HAVING 1=1 ${thresholdHaving(slicers)}`
   const sql = `SELECT cat, ${defs.map(d => `${d.expr} AS ${d.key}`).join(', ')} FROM (${inner})
     WHERE pos='${pos}' AND g >= ${minG(slicers)} ORDER BY ${sortKey} DESC NULLS LAST LIMIT 20`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [{ key: 'cat', label: 'Player' }, ...defs.map(d => ({ key: d.key, label: d.label, numeric: true, format: F[d.fmt] }))]
   return <MetricReport loading={q.loading} title="Volume & usage" subtitle={`${pos} · opportunity share & touches · ${sliceLabel(slicers)}`}
     mini={{ rows: q.data ?? [], cols, sort: { key: sortKey, dir: 'desc' }, caption: `Top 20 ${pos}s — sortable` }}
-    panels={[{ rows: q.data ?? [], categoryKey: 'cat', short: true, metrics: defs.map(d => ({ key: d.key, label: d.label, fmt: F[d.fmt] })) }]} />
+    panels={[{ rows: q.data ?? [], categoryKey: 'cat', short: true, metrics: defs.map((d, i) => ({ key: d.key, label: d.label, fmt: F[d.fmt], type: autoType(d.fmt, i) })) }]} />
 }
 const FANTASY_DEFS: MDef[] = [
   { key: 'ppr', label: 'PPR (total)', expr: 'round(sum(fantasy_points_ppr),1)', f: 'd1' },
@@ -185,7 +185,7 @@ function PlayerReport({ kind }: { kind: Kind }) {
   const { title, sub } = KIND_META[kind]
   const fantasy = kind === 'fantasy'
   const sql = `SELECT player_display_name AS cat, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}'
-    GROUP BY cat HAVING count(distinct game_id) >= ${minG(slicers)} ORDER BY ${sortKey} DESC NULLS LAST LIMIT 20`
+    GROUP BY cat HAVING count(distinct game_id) >= ${minG(slicers)} ${thresholdHaving(slicers)} ORDER BY ${sortKey} DESC NULLS LAST LIMIT 20`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [{ key: 'cat', label: 'Player' }, ...defs.map(d => ({ key: d.key, label: d.label, numeric: true, format: F[d.f] }))]
   const body = (
@@ -202,7 +202,7 @@ function DataTab() {
   const { slicers } = useSlicers(); const pos = usePos()
   const defs = [...prodDefs(pos), ...rateDefs(pos).filter(d => !prodDefs(pos).some(p => p.key === d.key)).slice(0, 6)]
   const sql = `SELECT player_display_name nm, recent_team tm, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}'
-    GROUP BY 1,2 HAVING count(distinct game_id) >= ${minG(slicers)} ORDER BY ${defs[0].key} DESC NULLS LAST LIMIT 60`
+    GROUP BY 1,2 HAVING count(distinct game_id) >= ${minG(slicers)} ${thresholdHaving(slicers)} ORDER BY ${defs[0].key} DESC NULLS LAST LIMIT 60`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [{ key: 'nm', label: 'Player' }, { key: 'tm', label: 'Tm' },
     ...defs.map(d => ({ key: d.key, label: d.label, numeric: true, format: F[d.f] }))]
@@ -253,9 +253,9 @@ function weeklyDefs(pos: Pos): MDef[] {
     { key: 'tds', label: 'Total TDs', expr: `sum(${td})::int`, f: 'int' },
     { key: 'fds', label: 'Total 1st Downs', expr: `sum(${fd})::int`, f: 'int' },
     { key: 'vol', label: volLabel, expr: `sum(${vol})::int`, f: 'int' },
-    { key: 'fpts', label: 'League PPR', expr: 'round(sum(fantasy_points_ppr),1)', f: 'd1' },
+    { key: 'fpts', label: 'EPA (total)', expr: `round(sum(${pos === 'QB' ? 'passing_epa' : pos === 'RB' ? 'rushing_epa' : 'receiving_epa'}),1)`, f: 'd1' },
     { key: 'np', label: 'Players', expr: 'count(distinct player_id)', f: 'int' },
-    { key: 'ppg', label: 'PPR / Player', expr: 'round(sum(fantasy_points_ppr)*1.0/nullif(count(distinct player_id),0),1)', f: 'd1' },
+    { key: 'ppg', label: 'TDs / Player', expr: `round(sum(${td})*1.0/nullif(count(distinct player_id),0),2)`, f: 'd2' },
     { key: 'ypp', label: 'Yds / Player', expr: `round(sum(${yd})*1.0/nullif(count(distinct player_id),0),1)`, f: 'd1' },
     { key: 'big', label: `${bigThresh}+ Yd Games`, expr: `count(*) FILTER(WHERE ${yd}>=${bigThresh})`, f: 'int' },
     { key: 'rows', label: 'Player-Games', expr: 'count(*)', f: 'int' },
@@ -287,6 +287,6 @@ export default function LeagueProductionDeck() {
     <DeckShell title="League Production" deckIndex={6}
       intro="Cross-league leaderboards, sliced honestly. Filter by position to compare like-for-like — production, efficiency, usage, situational splits, weekly trends and fantasy — all the way down to whatever slice of the season matters. First downs run throughout; the situational report is play-by-play, so down, distance, score and field position all bite."
       tabs={tabs}
-      slicerGroups={['season','week','position','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage']} />
+      slicerGroups={['season','week','position','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage','threshold']} />
   )
 }
