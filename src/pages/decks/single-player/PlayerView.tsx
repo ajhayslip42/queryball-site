@@ -9,7 +9,8 @@ import { MetricReport, type Metric } from '@/components/deck/Panels'
 import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
-import { playerWeekWhere, playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playerGameLog } from '@/lib/playerGameSql'
 import { fmt } from '@/lib/nfl'
 import type { Player } from '@/lib/players'
 
@@ -117,8 +118,8 @@ function pwRate(pos: Pos): M[] {
     { key: 'yacr', label: 'YAC / Rec', expr: 'round(receiving_yards_after_catch*1.0/nullif(receptions,0),1)', f: 'd1' },
     { key: 'fdpct', label: '1st Down / Tgt %', expr: 'round(receiving_first_downs*100.0/nullif(targets,0),1)', f: 'pct' },
     { key: 'epa', label: 'Rec EPA', expr: 'round(receiving_epa,2)', f: 'd2' },
-    { key: 'tsh', label: 'Tgt Share %', expr: 'round(target_share*100,1)', f: 'pct' },
-    { key: 'aysh', label: 'Air Yd Share %', expr: 'round(air_yards_share*100,1)', f: 'pct' },
+    { key: 'tdr', label: 'TD / Tgt %', expr: 'round(receiving_tds*100.0/nullif(targets,0),1)', f: 'pct' },
+    { key: 'yacpct', label: 'YAC %', expr: 'round(receiving_yards_after_catch*100.0/nullif(receiving_yards,0),1)', f: 'pct' },
     { key: 'ppr', label: 'PPR Pts', expr: 'round(fantasy_points_ppr,1)', f: 'd1' },
   ]
 }
@@ -153,7 +154,7 @@ function playDefs(pos: Pos): M[] {
 function useWeekly(player: Player, defs: M[]) {
   const { slicers } = useSlicers()
   const sql = `SELECT season||'-W'||lpad(week::text,2,'0') AS cat, ${sel(defs)}
-    FROM player_week WHERE player_id=${sq(player.gsis_id)} ${playerWeekWhere(slicers)} ORDER BY season, week`
+    FROM ${playerGameLog(slicers, { playerId: player.gsis_id })} g ORDER BY season, week`
   return { q: useQuery<any>(sql, [sql]), slicers }
 }
 function useSplit(player: Player, catExpr: string, defs: M[], extra = '') {
@@ -272,7 +273,7 @@ function Fantasy({ player }: { player: Player }) {
     { key: 'touch', label: 'Touches', expr: 'COALESCE(carries,0)+COALESCE(receptions,0)', f: 'int' },
   ]
   const sql = `SELECT season||'-W'||lpad(week::text,2,'0') AS cat, ${sel(defs)}
-    FROM player_week WHERE player_id=${sq(player.gsis_id)} ${playerWeekWhere(slicers)} ORDER BY season, week`
+    FROM ${playerGameLog(slicers, { playerId: player.gsis_id })} g ORDER BY season, week`
   const q = useQuery<any>(sql, [sql])
   return (
     <div className="space-y-4">
@@ -294,16 +295,16 @@ function DataTab({ player }: { player: Player }) {
       carries::int car, rushing_yards::int ry, rushing_tds::int rtd, rushing_first_downs::int rfd, round(rushing_epa,2) repa,
       targets::int tgt, receptions::int rec, receiving_yards::int recy, receiving_tds::int retd, receiving_first_downs::int recfd,
       round(receiving_air_yards*1.0/nullif(targets,0),1) adot, receiving_yards_after_catch::int yac,
-      round(target_share*100,1) tgtsh, round(air_yards_share*100,1) aysh, round(wopr,2) wopr,
+      receiving_air_yards::int reay, round(receiving_yards_after_catch*100.0/nullif(receiving_yards,0),1) yacpct,
       round(receiving_epa,2) recepa, round(fantasy_points,1) std, round(fantasy_points_ppr,1) ppr
-    FROM player_week WHERE player_id=${sq(player.gsis_id)} ${playerWeekWhere(slicers)} ORDER BY season DESC, week DESC`
+    FROM ${playerGameLog(slicers, { playerId: player.gsis_id })} g ORDER BY season DESC, week DESC`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [
     { key: 'szn', label: 'Szn' }, { key: 'wk', label: 'Wk', numeric: true }, { key: 'opp', label: 'Opp' },
     { key: 'cmp', label: 'Cmp', numeric: true }, { key: 'att', label: 'Att', numeric: true }, { key: 'py', label: 'PaYd', numeric: true }, { key: 'ptd', label: 'PaTD', numeric: true }, { key: 'intc', label: 'INT', numeric: true }, { key: 'pfd', label: 'Pa1D', numeric: true }, { key: 'pepa', label: 'PaEPA', numeric: true, format: F.d2 }, { key: 'pay', label: 'AirY', numeric: true },
     { key: 'car', label: 'Car', numeric: true }, { key: 'ry', label: 'RuYd', numeric: true }, { key: 'rtd', label: 'RuTD', numeric: true }, { key: 'rfd', label: 'Ru1D', numeric: true }, { key: 'repa', label: 'RuEPA', numeric: true, format: F.d2 },
     { key: 'tgt', label: 'Tgt', numeric: true }, { key: 'rec', label: 'Rec', numeric: true }, { key: 'recy', label: 'ReYd', numeric: true }, { key: 'retd', label: 'ReTD', numeric: true }, { key: 'recfd', label: 'Re1D', numeric: true },
-    { key: 'adot', label: 'aDOT', numeric: true, format: F.d1 }, { key: 'yac', label: 'YAC', numeric: true }, { key: 'tgtsh', label: 'Tgt%', numeric: true, format: F.d1 }, { key: 'aysh', label: 'AY%', numeric: true, format: F.d1 }, { key: 'wopr', label: 'WOPR', numeric: true, format: F.d2 }, { key: 'recepa', label: 'ReEPA', numeric: true, format: F.d2 },
+    { key: 'adot', label: 'aDOT', numeric: true, format: F.d1 }, { key: 'yac', label: 'YAC', numeric: true }, { key: 'reay', label: 'ReAirY', numeric: true }, { key: 'yacpct', label: 'YAC%', numeric: true, format: F.d1 }, { key: 'recepa', label: 'ReEPA', numeric: true, format: F.d2 },
     { key: 'std', label: 'STD', numeric: true, format: F.d1 }, { key: 'ppr', label: 'PPR', numeric: true, format: F.d1 },
   ]
   return (

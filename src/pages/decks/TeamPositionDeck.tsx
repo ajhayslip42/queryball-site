@@ -8,11 +8,11 @@ import { MetricReport, metricsOf, selOf, miniColsOf, F, type MDef } from '@/comp
 import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
-import { playerWeekWhere, playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playerGameLog } from '@/lib/playerGameSql'
 
 type Pos = 'QB' | 'RB' | 'WR' | 'TE'
 // Position-locked deck: clear any global position slicer so wrappers don't cross-pollute.
-const pw = (s: ReturnType<typeof useSlicers>['slicers']) => playerWeekWhere({ ...s, positions: [] })
 const minN = (s: ReturnType<typeof useSlicers>['slicers']) => (s.weeks.length ? 1 : 30)
 
 export default function TeamPositionDeck({ position, title, intro, deckIndex }: {
@@ -83,7 +83,7 @@ function rateDefs(pos: Pos): MDef[] {
 
 function useTeam(pos: Pos, defs: MDef[]) {
   const { slicers } = useSlicers()
-  const sql = `SELECT recent_team AS cat, ${selOf(defs)} FROM player_week WHERE position='${pos}' ${pw(slicers)} GROUP BY cat ORDER BY cat`
+  const sql = `SELECT recent_team AS cat, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' GROUP BY cat ORDER BY cat`
   return { q: useQuery<any>(sql, [sql]), slicers }
 }
 
@@ -112,7 +112,7 @@ function Fantasy({ pos }: { pos: Pos }) {
     { key: 'yds', label: 'Total Yds', expr: 'sum(COALESCE(passing_yards,0)+COALESCE(rushing_yards,0)+COALESCE(receiving_yards,0))', f: 'int' },
     { key: 'players', label: 'Distinct Players', expr: 'count(distinct player_id)', f: 'int' },
   ]
-  const sql = `SELECT recent_team AS cat, ${selOf(defs)} FROM player_week WHERE position='${pos}' ${pw(slicers)} GROUP BY cat ORDER BY cat`
+  const sql = `SELECT recent_team AS cat, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' GROUP BY cat ORDER BY cat`
   const q = useQuery<any>(sql, [sql])
   return (
     <div className="space-y-4">
@@ -128,8 +128,8 @@ function Room({ pos }: { pos: Pos }) {
   const { slicers } = useSlicers(); const team = slicers.teams[0] ?? 'KC'
   const defs = prodDefs(pos)
   // Default the team in via a slicer override so all other filters still apply consistently.
-  const where = playerWeekWhere({ ...slicers, positions: [], teams: slicers.teams.length ? slicers.teams : [team] })
-  const sql = `SELECT player_display_name AS cat, ${selOf(defs)} FROM player_week WHERE position='${pos}' ${where} GROUP BY cat HAVING ${defs[0].expr} > 0 ORDER BY ${defs[0].key} DESC`
+  const teamS = slicers.teams.length ? slicers : { ...slicers, teams: [team] }
+  const sql = `SELECT player_display_name AS cat, ${selOf(defs)} FROM ${playerGameLog(teamS)} g WHERE "position"='${pos}' GROUP BY cat HAVING ${defs[0].expr} > 0 ORDER BY ${defs[0].key} DESC`
   const q = useQuery<any>(sql, [sql])
   return (
     <div className="space-y-3">
@@ -204,22 +204,22 @@ function Situational({ pos }: { pos: Pos }) {
 /* Report #2 — packed per-player table */
 function DataTab({ pos }: { pos: Pos }) {
   const { slicers } = useSlicers()
-  const sql = `SELECT player_display_name nm, recent_team tm, count(*) g,
+  const sql = `SELECT player_display_name nm, recent_team tm, count(distinct game_id) g,
       sum(attempts)::int att, sum(passing_yards)::int py, sum(passing_tds)::int ptd, sum(interceptions)::int intc, sum(passing_first_downs)::int pfd,
       sum(carries)::int car, sum(rushing_yards)::int ry, sum(rushing_tds)::int rtd, sum(rushing_first_downs)::int rfd,
       sum(targets)::int tgt, sum(receptions)::int rec, sum(receiving_yards)::int recy, sum(receiving_tds)::int retd, sum(receiving_first_downs)::int recfd,
       round(sum(receiving_air_yards)*1.0/nullif(sum(targets),0),1) adot, sum(receiving_yards_after_catch)::int yac,
-      round(avg(target_share)*100,1) tgtsh, round(avg(wopr),2) wopr, round(sum(fantasy_points_ppr),1) ppr
-    FROM player_week WHERE position='${pos}' ${pw(slicers)} GROUP BY 1,2 HAVING count(*)>0 ORDER BY ppr DESC LIMIT 80`
+      sum(receiving_air_yards)::int ay, round(sum(targets)*1.0/nullif(count(distinct game_id),0),1) tpg, round(sum(fantasy_points_ppr),1) ppr
+    FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' GROUP BY 1,2 HAVING count(distinct game_id)>0 ORDER BY ppr DESC LIMIT 80`
   const q = useQuery<any>(sql, [sql])
   const all: Column<any>[] = [
     { key: 'nm', label: 'Player' }, { key: 'tm', label: 'Tm' }, { key: 'g', label: 'G', numeric: true },
     { key: 'att', label: 'Att', numeric: true }, { key: 'py', label: 'PaYd', numeric: true }, { key: 'ptd', label: 'PaTD', numeric: true }, { key: 'intc', label: 'INT', numeric: true }, { key: 'pfd', label: 'Pa1D', numeric: true },
     { key: 'car', label: 'Car', numeric: true }, { key: 'ry', label: 'RuYd', numeric: true }, { key: 'rtd', label: 'RuTD', numeric: true }, { key: 'rfd', label: 'Ru1D', numeric: true },
     { key: 'tgt', label: 'Tgt', numeric: true }, { key: 'rec', label: 'Rec', numeric: true }, { key: 'recy', label: 'ReYd', numeric: true }, { key: 'retd', label: 'ReTD', numeric: true }, { key: 'recfd', label: 'Re1D', numeric: true },
-    { key: 'adot', label: 'aDOT', numeric: true, format: F.d1 }, { key: 'yac', label: 'YAC', numeric: true }, { key: 'tgtsh', label: 'Tgt%', numeric: true, format: F.d1 }, { key: 'wopr', label: 'WOPR', numeric: true, format: F.d2 }, { key: 'ppr', label: 'PPR', numeric: true, format: F.d1 },
+    { key: 'adot', label: 'aDOT', numeric: true, format: F.d1 }, { key: 'yac', label: 'YAC', numeric: true }, { key: 'ay', label: 'AirYd', numeric: true }, { key: 'tpg', label: 'Tgt/G', numeric: true, format: F.d1 }, { key: 'ppr', label: 'PPR', numeric: true, format: F.d1 },
   ]
-  const drop = pos === 'QB' ? ['tgt', 'rec', 'recy', 'retd', 'recfd', 'adot', 'yac', 'tgtsh', 'wopr'] : pos === 'RB' ? ['att', 'py', 'ptd', 'intc', 'pfd', 'adot', 'tgtsh', 'wopr'] : ['att', 'py', 'ptd', 'intc', 'pfd', 'car', 'ry', 'rtd', 'rfd']
+  const drop = pos === 'QB' ? ['tgt', 'rec', 'recy', 'retd', 'recfd', 'adot', 'yac', 'ay', 'tpg'] : pos === 'RB' ? ['att', 'py', 'ptd', 'intc', 'pfd', 'adot'] : ['att', 'py', 'ptd', 'intc', 'pfd', 'car', 'ry', 'rtd', 'rfd']
   const cols = all.filter(c => !drop.includes(String(c.key)))
   return (
     <Tile title={`Every ${pos} — packed metrics`} subtitle={`${sliceLabel(slicers)} · scroll horizontally`} span={12}>

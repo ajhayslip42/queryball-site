@@ -9,12 +9,12 @@ import { MetricReport, metricsOf, selOf, miniColsOf, F, type MDef } from '@/comp
 import { QueryState } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
-import { playerWeekWhere, playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playerGameLog } from '@/lib/playerGameSql'
 import { POSITION_COLORS } from '@/lib/nfl'
 
 type Pos = 'QB' | 'RB' | 'WR' | 'TE'
 // Use the canonical helper so every slicer (team, opponent, home/away, ...) propagates.
-const pwW = (s: ReturnType<typeof useSlicers>['slicers']) => playerWeekWhere({ ...s, positions: [] })
 const minN = (s: ReturnType<typeof useSlicers>['slicers']) => (s.weeks.length ? 1 : 50)
 
 export default function TeamDefenseDeck() {
@@ -36,7 +36,7 @@ export default function TeamDefenseDeck() {
   )
 }
 
-/* Report 1 — allowed by position (player_week grouped by opponent_team) */
+/* Report 1 — allowed by position (reconstructed from plays, grouped by opponent_team/defense) */
 function allowedDefs(pos: Pos): MDef[] {
   const yd = pos === 'QB' ? 'passing_yards' : pos === 'RB' ? 'rushing_yards' : 'receiving_yards'
   const td = pos === 'QB' ? 'passing_tds' : pos === 'RB' ? 'rushing_tds' : 'receiving_tds'
@@ -57,7 +57,7 @@ function allowedDefs(pos: Pos): MDef[] {
 }
 function Allowed({ pos, setPos }: { pos: Pos; setPos: (p: Pos) => void }) {
   const { slicers } = useSlicers(); const defs = allowedDefs(pos)
-  const sql = `SELECT opponent_team AS cat, ${selOf(defs)} FROM player_week WHERE position='${pos}' AND opponent_team IS NOT NULL ${pwW(slicers)} GROUP BY cat ORDER BY cat`
+  const sql = `SELECT opponent_team AS cat, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' AND opponent_team IS NOT NULL GROUP BY cat ORDER BY cat`
   const q = useQuery<any>(sql, [sql])
   return (
     <div className="space-y-3">
