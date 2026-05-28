@@ -15,7 +15,8 @@
 
 import DeckShell from '@/components/deck/DeckShell'
 import { useSlicers } from '@/lib/slicers'
-import { getPlayer, DEFAULT_PLAYER } from '@/lib/players'
+import { DEFAULT_PLAYER } from '@/lib/players'
+import { usePlayerIndex } from '@/lib/usePlayerIndex'
 
 import { getQBTabs, QB_SLICERS } from './single-player/QBView'
 import { getRBTabs, RB_SLICERS } from './single-player/RBView'
@@ -31,8 +32,9 @@ const POSITION_BLURB: Record<string, string> = {
 
 export default function SinglePlayerDeck() {
   const { slicers } = useSlicers()
+  const { byId } = usePlayerIndex()
   const playerId = slicers.playerIds[0]
-  const player = (playerId && getPlayer(playerId)) || DEFAULT_PLAYER
+  const player = (playerId && byId.get(playerId)) || DEFAULT_PLAYER
 
   const tabs =
     player.position === 'QB' ? getQBTabs(player) :

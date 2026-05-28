@@ -32,6 +32,9 @@ export function playerWeekWhere(s: Slicers): string {
   if (s.teams.length) w += ` AND recent_team IN (${list(s.teams)})`
   if (s.opponents.length) w += ` AND opponent_team IN (${list(s.opponents)})`
   if (s.playerIds.length) w += ` AND player_id IN (${list(s.playerIds)})`
+  // Home/away requires a games-table lookup (player_week has no flag).
+  if (s.homeAway === 'home') w += ` AND (season, week, recent_team) IN (SELECT season, week, home_team FROM games)`
+  else if (s.homeAway === 'away') w += ` AND (season, week, recent_team) IN (SELECT season, week, away_team FROM games)`
   return w
 }
 
@@ -93,6 +96,9 @@ export function playsWhere(s: Slicers): string {
   if (s.twoMinute === 'no') w += ` AND half_seconds_remaining > 120`
   if (s.garbageTime === 'no') w += ` AND NOT (qtr >= 4 AND abs(score_differential) > 21)`
   if (s.garbageTime === 'yes') w += ` AND (qtr >= 4 AND abs(score_differential) > 21)`
+  // Home/away — plays carry home_team/away_team directly.
+  if (s.homeAway === 'home') w += ` AND posteam = home_team`
+  else if (s.homeAway === 'away') w += ` AND posteam = away_team`
   return w
 }
 

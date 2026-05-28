@@ -12,7 +12,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useSlicers } from '@/lib/slicers'
-import { searchPlayers, getPlayer, DEFAULT_PLAYER, type Player } from '@/lib/players'
+import { DEFAULT_PLAYER, type Player } from '@/lib/players'
+import { usePlayerIndex } from '@/lib/usePlayerIndex'
 import { Search, X, ChevronDown } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -27,15 +28,16 @@ export default function PlayerPicker({ onPlayerChange }: {
   onPlayerChange?: (player: Player) => void
 }) {
   const { slicers, update } = useSlicers()
+  const { byId, search, loading } = usePlayerIndex()
   const currentId = slicers.playerIds[0]
-  const player = currentId ? getPlayer(currentId) ?? DEFAULT_PLAYER : DEFAULT_PLAYER
+  const player = (currentId ? byId.get(currentId) : undefined) ?? DEFAULT_PLAYER
 
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const results = searchPlayers(query, 20)
+  const results = search(query, 20)
 
   // Close on outside click
   useEffect(() => {
@@ -132,7 +134,7 @@ export default function PlayerPicker({ onPlayerChange }: {
           {/* Results */}
           <div className="max-h-80 overflow-y-auto">
             {results.length === 0 && (
-              <p className="px-4 py-6 text-sm text-muted text-center">No players matching "{query}".</p>
+              <p className="px-4 py-6 text-sm text-muted text-center">{loading ? 'Loading players…' : `No players matching "${query}".`}</p>
             )}
             {results.map(p => (
               <button
