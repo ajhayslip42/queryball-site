@@ -287,6 +287,6 @@ export default function LeagueProductionDeck() {
     <DeckShell title="League Production" deckIndex={6}
       intro="Cross-league leaderboards, sliced honestly. Filter by position to compare like-for-like — production, efficiency, usage, situational splits, weekly trends and fantasy — all the way down to whatever slice of the season matters. First downs run throughout; the situational report is play-by-play, so down, distance, score and field position all bite."
       tabs={tabs}
-      slicerGroups={['season','week','position','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage','threshold']} />
+      slicerGroups={['season','week','position','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','threshold']} />
   )
 }

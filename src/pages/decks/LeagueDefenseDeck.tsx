@@ -27,7 +27,7 @@ export default function LeagueDefenseDeck() {
     <DeckShell title="League Defense" deckIndex={9}
       intro="Predictive rankings, not scorebook fiction. Every defense ranked by EPA per play allowed — overall, pass, run, by depth of target, and situationally — with first downs allowed throughout. Plays-based reports honor the whole rail, so you can isolate (e.g.) deep throws to the right on third down. Live from play-by-play."
       tabs={tabs}
-      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage']} />
+      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType']} />
   )
 }
 

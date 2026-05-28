@@ -54,7 +54,6 @@ export type Slicers = {
   scoreStates: ScoreState[]
   quarters: Quarter[]
   twoMinute: Tri
-  garbageTime: Tri
 
   zones: FieldZone[]
 
@@ -96,7 +95,6 @@ export const DEFAULTS: Slicers = {
   scoreStates: [],
   quarters: [],
   twoMinute: 'all',
-  garbageTime: 'no',
   zones: [],
   shotgun: 'all',
   noHuddle: 'all',
@@ -172,7 +170,6 @@ function encodeToParams(s: Slicers): URLSearchParams {
   if (s.scoreStates.length) p.set('sc', encList(s.scoreStates))
   if (s.quarters.length)  p.set('qtr', encList(s.quarters))
   if (s.twoMinute !== 'all') p.set('tm2', s.twoMinute)
-  if (s.garbageTime !== 'no') p.set('gt', s.garbageTime)
   if (s.zones.length)     p.set('zn', encList(s.zones))
   if (s.shotgun !== 'all') p.set('sg', s.shotgun)
   if (s.noHuddle !== 'all') p.set('nh', s.noHuddle)
@@ -206,7 +203,6 @@ function decodeFromParams(p: URLSearchParams): Slicers {
     scoreStates: decList(p.get('sc'), String) as ScoreState[],
     quarters: decList(p.get('qtr'), String) as Quarter[],
     twoMinute: (p.get('tm2') as Tri) || 'all',
-    garbageTime: (p.get('gt') as Tri) || 'no',
     zones: decList(p.get('zn'), String) as FieldZone[],
     shotgun: (p.get('sg') as Tri) || 'all',
     noHuddle: (p.get('nh') as Tri) || 'all',
@@ -256,7 +252,6 @@ export function countActive(s: Slicers): number {
   if (s.scoreStates.length) n++
   if (s.quarters.length) n++
   if (s.twoMinute !== 'all') n++
-  if (s.garbageTime !== 'no') n++
   if (s.zones.length) n++
   if (s.shotgun !== 'all') n++
   if (s.noHuddle !== 'all') n++

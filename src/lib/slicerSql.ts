@@ -97,8 +97,6 @@ export function playsWhere(s: Slicers): string {
   if (s.runDir.length) w += ` AND run_location IN (${list(s.runDir)})`
   if (s.twoMinute === 'yes') w += ` AND half_seconds_remaining <= 120`
   if (s.twoMinute === 'no') w += ` AND half_seconds_remaining > 120`
-  if (s.garbageTime === 'no') w += ` AND NOT (qtr >= 4 AND abs(score_differential) > 21)`
-  if (s.garbageTime === 'yes') w += ` AND (qtr >= 4 AND abs(score_differential) > 21)`
   // Home/away — plays carry home_team/away_team directly.
   if (s.homeAway === 'home') w += ` AND posteam = home_team`
   else if (s.homeAway === 'away') w += ` AND posteam = away_team`

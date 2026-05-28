@@ -20,7 +20,7 @@ import clsx from 'clsx'
 
 export type Group =
   | 'season' | 'week' | 'position' | 'team' | 'opponent' | 'homeAway'
-  | 'down' | 'distance' | 'qtr' | 'score' | 'zone' | 'garbage'
+  | 'down' | 'distance' | 'qtr' | 'score' | 'zone'
   | 'shotgun' | 'noHuddle' | 'playType' | 'passDepth' | 'runDir' | 'pressure' | 'threshold'
 
 const SEASONS = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
@@ -280,12 +280,6 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
                   </Chip>
                 ))}
               </div>
-            </GroupSection>
-          )}
-
-          {has('garbage') && (
-            <GroupSection title="Special situations" defaultOpen={false}>
-              <TriToggle label="Exclude garbage time" value={slicers.garbageTime} onChange={v => update({ garbageTime: v })} />
             </GroupSection>
           )}
 

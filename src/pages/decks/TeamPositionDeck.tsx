@@ -29,7 +29,7 @@ export default function TeamPositionDeck({ position, title, intro, deckIndex }: 
   ]
   return (
     <DeckShell title={title} intro={intro} tabs={tabs} deckIndex={deckIndex}
-      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage','threshold']} />
+      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','threshold']} />
   )
 }
 

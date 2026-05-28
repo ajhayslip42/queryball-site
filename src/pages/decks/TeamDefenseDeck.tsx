@@ -32,7 +32,7 @@ export default function TeamDefenseDeck() {
     <DeckShell title="Team Defense (Against)" deckIndex={7}
       intro="What each defense allows. The toggle reshapes the allowed-by-position report; the play-by-play reports honor the whole rail — including pass depth and direction, so you can isolate deep throws to the right."
       tabs={tabs}
-      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage']} />
+      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType']} />
   )
 }
 

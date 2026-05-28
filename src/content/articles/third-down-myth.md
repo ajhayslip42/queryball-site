@@ -30,7 +30,7 @@ The decks let you pull both of these in one click. Set Down = 3, then look at di
 
 ## A worked example
 
-> Pull up Single Player Productivity. Filter Down = 3, Score state = tied, exclude garbage time. Compare any two quarterbacks at similar attempt volume. You'll see the conversion-rate column tells you almost nothing the EPA/db column hasn't already told you better.
+> Pull up Single Player Productivity. Filter Down = 3, Score state = tied. Compare any two quarterbacks at similar attempt volume. You'll see the conversion-rate column tells you almost nothing the EPA/db column hasn't already told you better.
 
 That's the bet QueryBall is making: when you remove the cumulative season totals and look at the sliced versions, the rankings *flip* often enough to matter. And the flipped version is the one that predicts the next week.
 

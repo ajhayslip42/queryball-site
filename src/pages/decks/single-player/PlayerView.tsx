@@ -40,7 +40,7 @@ export function buildPlayerTabs(player: Player): DeckTab[] {
 }
 export const PLAYER_SLICERS = [
   'season','week','team','opponent','homeAway','down','distance','score','zone','qtr',
-  'passDepth','runDir','pressure','shotgun','playType','garbage',
+  'passDepth','runDir','pressure','shotgun','playType',
 ] as const
 
 const roleId = (pos: Pos) => pos === 'QB' ? 'passer_player_id' : pos === 'RB' ? 'rusher_player_id' : 'receiver_player_id'
@@ -58,7 +58,7 @@ function pwProd(pos: Pos): M[] {
     { key: 'ay', label: 'Air Yards', expr: 'passing_air_yards', f: 'int' },
     { key: 'sk', label: 'Sacks', expr: 'sacks', f: 'int' },
     { key: 'ry', label: 'Rush Yds', expr: 'rushing_yards', f: 'int' },
-    { key: 'cmp', label: 'Completions', expr: 'completions', f: 'int' },
+    { key: 'totyd', label: 'Total Yds', expr: 'passing_yards+rushing_yards', f: 'int' },
   ]
   if (pos === 'RB') return [
     { key: 'ry', label: 'Rush Yds', expr: 'rushing_yards', f: 'int' },

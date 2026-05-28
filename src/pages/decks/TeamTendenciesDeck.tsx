@@ -26,7 +26,7 @@ export default function TeamTendenciesDeck() {
     <DeckShell title="Team Tendencies" deckIndex={8}
       intro="What each offense does, from play-by-play — balance, tempo, depth of target, situational behavior, explosiveness, and efficiency. Every report is sliceable by score, quarter, field zone, and pass depth in the rail."
       tabs={tabs}
-      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','garbage']} />
+      slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType']} />
   )
 }
 
