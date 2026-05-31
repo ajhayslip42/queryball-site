@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://queryball.com/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://queryball.com/decks/single-player</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://queryball.com/decks/league-production</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://queryball.com/decks/team-qb</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://queryball.com/decks/team-rb</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://queryball.com/decks/team-wr</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://queryball.com/decks/team-te</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://queryball.com/decks/team-defense</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://queryball.com/decks/team-tendencies</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://queryball.com/decks/league-defense</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://queryball.com/articles</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://queryball.com/articles/welcome</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://queryball.com/articles/third-down-myth</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://queryball.com/projections</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+</urlset>

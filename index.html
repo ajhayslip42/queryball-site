@@ -2,17 +2,92 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#2A3B47" />
-    <meta name="description" content="QueryBall — NFL stats with the context that turns numbers into action." />
-    <title>QueryBall</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="canonical" href="https://queryball.com/" />
+
+    <!-- Primary SEO -->
+    <title>QueryBall — NFL Stats in Context: Down, Distance, Score, Field Position</title>
+    <meta name="description" content="QueryBall turns NFL play-by-play data into contextual stats. Slice player and team production by down, distance, score, field zone, pass depth, quarter and more — leaderboards, defense rankings, and projections backed by nflverse data." />
+    <meta name="keywords" content="NFL stats, fantasy football stats, NFL play by play, contextual NFL stats, NFL leaderboards, fantasy football projections, QueryBall, NFL analytics, situational NFL stats, third down stats, red zone stats" />
+    <meta name="author" content="QueryBall" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="googlebot" content="index, follow" />
+
+    <!-- Open Graph (Facebook, LinkedIn, Slack, Discord previews) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="QueryBall" />
+    <meta property="og:title" content="QueryBall — NFL Stats in Context" />
+    <meta property="og:description" content="Slice NFL player and team stats by down, distance, score, field zone, pass depth and more. Built on nflverse play-by-play data." />
+    <meta property="og:url" content="https://queryball.com/" />
+    <meta property="og:image" content="https://queryball.com/logo.png" />
+    <meta property="og:image:alt" content="QueryBall logo" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="QueryBall — NFL Stats in Context" />
+    <meta name="twitter:description" content="Slice NFL player and team stats by down, distance, score, field zone, pass depth and more." />
+    <meta name="twitter:image" content="https://queryball.com/logo.png" />
+    <meta name="twitter:image:alt" content="QueryBall logo" />
+
+    <!-- Structured data: WebSite + Organization (Google rich result eligibility) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://queryball.com/#website",
+          "url": "https://queryball.com/",
+          "name": "QueryBall",
+          "description": "NFL stats with the context that turns numbers into action.",
+          "publisher": { "@id": "https://queryball.com/#organization" },
+          "inLanguage": "en-US"
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://queryball.com/#organization",
+          "name": "QueryBall",
+          "url": "https://queryball.com/",
+          "logo": "https://queryball.com/logo.png",
+          "description": "Contextual NFL stats and fantasy football tools built on nflverse play-by-play data."
+        }
+      ]
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
+    <!-- Text fallback for crawlers that don't execute JavaScript -->
+    <noscript>
+      <header><h1>QueryBall — NFL Stats in Context</h1></header>
+      <main>
+        <p><strong>QueryBall</strong> is an NFL stats tool that adds the context most leaderboards miss.
+        Filter player and team production by down, distance, score differential, field zone, pass depth,
+        quarter, home/away, and more — built on play-by-play data from
+        <a href="https://github.com/nflverse">nflverse</a>.</p>
+        <h2>Reports</h2>
+        <ul>
+          <li><a href="/decks/single-player">Single Player</a> — every metric for one player, sliced by situation.</li>
+          <li><a href="/decks/league-production">League Production</a> — QB, RB, WR, TE leaderboards.</li>
+          <li><a href="/decks/team-qb">Team — Quarterback</a></li>
+          <li><a href="/decks/team-rb">Team — Running Back</a></li>
+          <li><a href="/decks/team-wr">Team — Wide Receiver</a></li>
+          <li><a href="/decks/team-te">Team — Tight End</a></li>
+          <li><a href="/decks/team-defense">Team Defense</a> — production allowed by position.</li>
+          <li><a href="/decks/team-tendencies">Team Tendencies</a> — situational play-calling.</li>
+          <li><a href="/decks/league-defense">League Defense</a> — defensive rankings.</li>
+          <li><a href="/articles">Articles</a> · <a href="/projections">Projections</a></li>
+        </ul>
+        <p>To use the interactive tools, please enable JavaScript.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,0 +1,8 @@
+# https://queryball.com/robots.txt
+# Allow all reputable crawlers, point them at the sitemap.
+
+User-agent: *
+Allow: /
+Disallow: /data/
+
+Sitemap: https://queryball.com/sitemap.xml
