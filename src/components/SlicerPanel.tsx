@@ -10,12 +10,13 @@
 import { useState, type ReactNode } from 'react'
 import { useSlicers, countActive, type Tri } from '@/lib/slicers'
 import type {
-  Slicers, DistanceBucket, ScoreState, FieldZone, Quarter, PassDepth, Direction, Threshold, ThreshKey,
+  Slicers, DistanceBucket, ScoreState, FieldZone, Quarter, PassDepth, PassDir, RunDir, Threshold, ThreshKey,
 } from '@/lib/slicers'
-import { DISTANCE_LABELS, SCORE_LABELS, DEPTH_LABELS, DIR_LABELS, ZONE_LABELS, THRESH_LABELS, thresholdsForPositions } from '@/lib/slicers'
+import { DISTANCE_LABELS, SCORE_LABELS, DEPTH_LABELS, PASSDIR_LABELS, RUNDIR_LABELS, ZONE_LABELS, THRESH_LABELS, thresholdsForPositions } from '@/lib/slicers'
 import { TEAMS, POSITIONS } from '@/lib/nfl'
 import PlayerPicker from '@/components/PlayerPicker'
-import { ChevronDown, SlidersHorizontal, X, RotateCcw } from 'lucide-react'
+import { useIsMobile } from '@/lib/useIsMobile'
+import { ChevronDown, SlidersHorizontal, X, RotateCcw, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import clsx from 'clsx'
 
 export type Group =
@@ -88,6 +89,28 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
     update({ [field]: next } as Partial<Slicers>)
   }
   const has = (g: Group) => groups.includes(g)
+  const isMobile = useIsMobile()
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false)
+  // On mobile: only these five stay visible up top; the rest are stuffed into the mobile "More".
+  const MOBILE_PRIMARY: Group[] = ['position', 'team', 'down', 'distance', 'score']
+  const isPrimary = (g: Group) => MOBILE_PRIMARY.includes(g)
+  const showGroup = (g: Group) => has(g) && (!isMobile || isPrimary(g) || mobileMoreOpen)
+
+  if (collapsed) {
+    // Compact rail — a thin column with an expand button + active count.
+    return (
+      <aside className="filter-rail-collapsed">
+        <button type="button" onClick={() => setCollapsed(false)}
+          className="w-full h-full flex flex-col items-center gap-2 py-4 text-muted hover:text-accent2 transition-colors"
+          title="Show filter panel">
+          <PanelLeftOpen className="h-4 w-4" />
+          <span className="[writing-mode:vertical-rl] rotate-180 text-[11px] tracking-widest uppercase">Filters</span>
+          <span className="num text-[10px] bg-accent2 text-paper rounded-full px-1.5 py-0.5">{active}</span>
+        </button>
+      </aside>
+    )
+  }
 
   return (
     <>
@@ -97,16 +120,22 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             <p className="group-label text-accent2">Filters</p>
             <p className="text-[11px] text-muted mt-0.5 num">{active} applied</p>
           </div>
-          <button type="button" onClick={reset}
-            className="flex items-center gap-1 text-[11px] text-muted hover:text-accent2 transition-colors" title="Reset all filters">
-            <RotateCcw className="h-3 w-3" /> Reset
-          </button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={reset}
+              className="flex items-center gap-1 text-[11px] text-muted hover:text-accent2 transition-colors" title="Reset all filters">
+              <RotateCcw className="h-3 w-3" /> Reset
+            </button>
+            <button type="button" onClick={() => setCollapsed(true)}
+              className="text-muted hover:text-accent2 transition-colors" title="Collapse filter panel">
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="px-5 py-5 space-y-5">
           {showPlayerPicker && (<><PlayerPicker /><div className="border-b border-railedge -mx-5" /></>)}
 
-          {has('season') && (
+          {showGroup('season') && (
             <GroupSection title="Season">
               <div className="flex flex-wrap gap-1">
                 {SEASONS.slice(-6).map(s => (
@@ -116,7 +145,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('week') && (
+          {showGroup('week') && (
             <GroupSection title="Week">
               <div className="grid grid-cols-6 gap-1">
                 {WEEKS.map(w => (
@@ -135,7 +164,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('position') && (
+          {showGroup('position') && (
             <GroupSection title="Position">
               <div className="flex flex-wrap gap-1">
                 {POSITIONS.map(p => (
@@ -145,7 +174,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('team') && (
+          {showGroup('team') && (
             <GroupSection title="Team" defaultOpen={false}>
               <div className="grid grid-cols-4 gap-1">
                 {TEAMS.map(t => (
@@ -156,7 +185,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('opponent') && (
+          {showGroup('opponent') && (
             <GroupSection title="Opponent" defaultOpen={false}>
               <div className="grid grid-cols-4 gap-1">
                 {TEAMS.map(t => (
@@ -167,7 +196,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('homeAway') && (
+          {showGroup('homeAway') && (
             <GroupSection title="Home / Away">
               <div className="flex gap-1">
                 {(['home', 'away', 'all'] as const).map(v => (
@@ -178,7 +207,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('down') && (
+          {showGroup('down') && (
             <GroupSection title="Down">
               <div className="flex flex-wrap gap-1">
                 {[1, 2, 3, 4].map(d => (
@@ -190,7 +219,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('distance') && (
+          {showGroup('distance') && (
             <GroupSection title="Distance to go">
               <div className="flex flex-wrap gap-1">
                 {(['d1', 'd2to3', 'd4to6', 'd7to9', 'd10', 'd11plus'] as DistanceBucket[]).map(d => (
@@ -200,7 +229,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('score') && (
+          {showGroup('score') && (
             <GroupSection title="Score differential">
               <div className="flex flex-wrap gap-1">
                 {(['lose17','lose9to16','lose4to8','lose1to3','tied','win1to3','win4to8','win9to16','win17'] as ScoreState[]).map(s => (
@@ -210,7 +239,14 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('zone') && (
+          {isMobile && !mobileMoreOpen && (
+            <button type="button" onClick={() => setMobileMoreOpen(true)}
+              className="w-full flex items-center justify-center gap-2 qcard px-3 py-2.5 text-xs font-medium hover:border-accent hover:text-accent2 transition-colors">
+              <SlidersHorizontal className="h-3.5 w-3.5" /> Show more filters
+            </button>
+          )}
+
+          {showGroup('zone') && (
             <GroupSection title="Field zone">
               <div className="flex flex-wrap gap-1">
                 {(['own1to20', 'own21to50', 'opp49to21', 'redzone', 'goalline'] as FieldZone[]).map(z => (
@@ -220,7 +256,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('qtr') && (
+          {showGroup('qtr') && (
             <GroupSection title="Quarter">
               <div className="flex flex-wrap gap-1">
                 {(['1', '2', '3', '4', 'OT'] as Quarter[]).map(q => (
@@ -231,7 +267,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('passDepth') && (
+          {showGroup('passDepth') && (
             <GroupSection title="Pass depth & direction">
               <span className="text-[11px] text-muted block mb-1">Depth of target</span>
               <div className="flex flex-wrap gap-1 mb-2">
@@ -241,37 +277,38 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
               </div>
               <span className="text-[11px] text-muted block mb-1">Direction</span>
               <div className="flex flex-wrap gap-1">
-                {(['left', 'middle', 'right'] as Direction[]).map(d => (
-                  <Chip key={d} active={slicers.passDir.includes(d)} onClick={() => toggle('passDir', d)}>{DIR_LABELS[d]}</Chip>
+                {(['left', 'middle', 'right'] as PassDir[]).map(d => (
+                  <Chip key={d} active={slicers.passDir.includes(d)} onClick={() => toggle('passDir', d)}>{PASSDIR_LABELS[d]}</Chip>
                 ))}
               </div>
             </GroupSection>
           )}
 
-          {has('runDir') && (
-            <GroupSection title="Run direction">
+          {showGroup('runDir') && (
+            <GroupSection title="Run direction (gap)">
               <div className="flex flex-wrap gap-1">
-                {(['left', 'middle', 'right'] as Direction[]).map(d => (
-                  <Chip key={d} active={slicers.runDir.includes(d)} onClick={() => toggle('runDir', d)}>{DIR_LABELS[d]}</Chip>
+                {(['left_end', 'left_tackle', 'left_guard', 'middle', 'right_guard', 'right_tackle', 'right_end'] as RunDir[]).map(d => (
+                  <Chip key={d} active={slicers.runDir.includes(d)} onClick={() => toggle('runDir', d)}>{RUNDIR_LABELS[d]}</Chip>
                 ))}
               </div>
+              <p className="text-[10px] text-muted mt-1.5 leading-snug">Combines <span className="font-mono">run_location</span> and <span className="font-mono">run_gap</span> — a Right-Guard carry is a very different play from a Right-End sweep.</p>
             </GroupSection>
           )}
 
-          {has('pressure') && (
+          {showGroup('pressure') && (
             <GroupSection title="Pressure">
               <TriToggle label="QB hit on play" value={slicers.pressure} onChange={v => update({ pressure: v })} />
             </GroupSection>
           )}
 
-          {has('shotgun') && (
+          {showGroup('shotgun') && (
             <GroupSection title="Formation" defaultOpen={false}>
               <TriToggle label="Shotgun" value={slicers.shotgun} onChange={v => update({ shotgun: v })} />
               <div className="mt-2"><TriToggle label="No-huddle" value={slicers.noHuddle} onChange={v => update({ noHuddle: v })} /></div>
             </GroupSection>
           )}
 
-          {has('playType') && (
+          {showGroup('playType') && (
             <GroupSection title="Play type">
               <div className="flex flex-wrap gap-1">
                 {(['pass', 'run', 'special'] as const).map(t => (
@@ -283,7 +320,7 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
             </GroupSection>
           )}
 
-          {has('threshold') && (
+          {showGroup('threshold') && (
             <GroupSection title="Usage thresholds" defaultOpen={false}>
               <div className="flex items-center justify-end gap-2 mb-1">
                 <span className="text-[10px] text-muted w-14 text-center">min</span>
@@ -314,8 +351,8 @@ function MoreFiltersDrawer({ onClose }: { onClose: () => void }) {
   const { slicers, update } = useSlicers()
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed right-0 top-0 z-50 h-full w-[420px] max-w-[95vw] overflow-y-auto bg-paper shadow-2xl">
+      <div className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm qb-drawer-scrim" onClick={onClose} />
+      <div className="fixed right-0 top-0 z-50 h-full w-[420px] max-w-[95vw] overflow-y-auto bg-paper shadow-2xl qb-drawer">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-paper/95 px-5 py-4 backdrop-blur">
           <div>
             <div className="font-display text-[22px] italic">More <span className="text-accent">filters</span></div>
@@ -396,8 +433,8 @@ export function ActiveSlicerBadges() {
   for (const q of slicers.quarters) badges.push({ label: q === 'OT' ? 'OT' : `Q${q}`, clear: () => update({ quarters: slicers.quarters.filter(v => v !== q) }) })
   if (slicers.twoMinute !== 'all') badges.push({ label: '2-minute', clear: () => update({ twoMinute: 'all' }) })
   for (const d of slicers.passDepth) badges.push({ label: DEPTH_LABELS[d], clear: () => update({ passDepth: slicers.passDepth.filter(v => v !== d) }) })
-  for (const d of slicers.passDir) badges.push({ label: `${DIR_LABELS[d]} pass`, clear: () => update({ passDir: slicers.passDir.filter(v => v !== d) }) })
-  for (const d of slicers.runDir) badges.push({ label: `${DIR_LABELS[d]} run`, clear: () => update({ runDir: slicers.runDir.filter(v => v !== d) }) })
+  for (const d of slicers.passDir) badges.push({ label: `${PASSDIR_LABELS[d]} pass`, clear: () => update({ passDir: slicers.passDir.filter(v => v !== d) }) })
+  for (const d of slicers.runDir) badges.push({ label: `${RUNDIR_LABELS[d]} run`, clear: () => update({ runDir: slicers.runDir.filter(v => v !== d) }) })
   if (slicers.pressure !== 'all') badges.push({ label: slicers.pressure === 'yes' ? 'Under pressure' : 'Clean pocket', clear: () => update({ pressure: 'all' }) })
   for (const t of slicers.playTypes) badges.push({ label: t, clear: () => update({ playTypes: slicers.playTypes.filter(v => v !== t) }) })
   if (slicers.shotgun !== 'all') badges.push({ label: slicers.shotgun === 'yes' ? 'Shotgun' : 'Under center', clear: () => update({ shotgun: 'all' }) })

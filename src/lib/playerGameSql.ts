@@ -38,19 +38,24 @@ export function playerGameLog(s: Slicers, opts?: { playerId?: string }): string 
         interception::int p_int, sack::int p_sack, COALESCE(air_yards,0) p_ay, COALESCE(yards_after_catch,0) p_yac,
         first_down::int p_fd, COALESCE(epa,0) p_epa,
         0 r_car, 0 r_yds, 0 r_td, 0 r_fd, 0.0 r_epa,
-        0 c_tgt, 0 c_rec, 0 c_yds, 0 c_td, 0 c_ay, 0 c_yac, 0 c_fd, 0.0 c_epa
+        0 c_tgt, 0 c_rec, 0 c_yds, 0 c_td, 0 c_ay, 0 c_yac, 0 c_fd, 0.0 c_epa,
+        0 c_ay_comp, 0 c_ay_inc, 0 c_inc
       FROM plays WHERE pass_attempt=1 AND passer_player_id IS NOT NULL${pf('passer')} ${W}
       UNION ALL
       SELECT rusher_player_id, game_id, season, week, season_type, posteam, defteam,
         0,0,0,0,0,0,0,0,0,0.0,
         1, COALESCE(rushing_yards,0), rush_touchdown::int, first_down::int, COALESCE(epa,0),
-        0,0,0,0,0,0,0,0.0
+        0,0,0,0,0,0,0,0.0,
+        0,0,0
       FROM plays WHERE rush_attempt=1 AND rusher_player_id IS NOT NULL${pf('rusher')} ${W}
       UNION ALL
       SELECT receiver_player_id, game_id, season, week, season_type, posteam, defteam,
         0,0,0,0,0,0,0,0,0,0.0,
         0,0,0,0,0.0,
-        1, complete_pass::int, COALESCE(receiving_yards,0), pass_touchdown::int, COALESCE(air_yards,0), COALESCE(yards_after_catch,0), first_down::int, COALESCE(epa,0)
+        1, complete_pass::int, COALESCE(receiving_yards,0), pass_touchdown::int, COALESCE(air_yards,0), COALESCE(yards_after_catch,0), first_down::int, COALESCE(epa,0),
+        (CASE WHEN complete_pass=1 THEN COALESCE(air_yards,0) ELSE 0 END) c_ay_comp,
+        (CASE WHEN complete_pass=0 THEN COALESCE(air_yards,0) ELSE 0 END) c_ay_inc,
+        (CASE WHEN complete_pass=0 THEN 1 ELSE 0 END) c_inc
       FROM plays WHERE pass_attempt=1 AND receiver_player_id IS NOT NULL${pf('receiver')} ${W}
     )
     SELECT ev.pid player_id, pl.display_name player_display_name, pl.position AS "position",
@@ -61,6 +66,12 @@ export function playerGameLog(s: Slicers, opts?: { playerId?: string }): string 
       sum(r_car) carries, sum(r_yds) rushing_yards, sum(r_td) rushing_tds, sum(r_fd) rushing_first_downs, sum(r_epa) rushing_epa,
       sum(c_tgt) targets, sum(c_rec) receptions, sum(c_yds) receiving_yards, sum(c_td) receiving_tds,
       sum(c_ay) receiving_air_yards, sum(c_yac) receiving_yards_after_catch, sum(c_fd) receiving_first_downs, sum(c_epa) receiving_epa,
+      -- "What could have been": air yards on incomplete passes, plus the split of completed-vs-incomplete air yards.
+      sum(COALESCE(c_ay_comp,0)) receiving_air_yards_completed,
+      sum(COALESCE(c_ay_inc,0))  receiving_air_yards_incomplete,
+      sum(COALESCE(c_inc,0))     incompletions,
+      -- Opportunity = targets + carries (RB-critical, but computed for everyone).
+      (sum(c_tgt)+sum(r_car)) opportunities,
       round(sum(p_yds)*0.04+sum(p_td)*4-sum(p_int)*2+sum(r_yds)*0.1+sum(r_td)*6+sum(c_yds)*0.1+sum(c_td)*6,2) fantasy_points,
       round(sum(p_yds)*0.04+sum(p_td)*4-sum(p_int)*2+sum(r_yds)*0.1+sum(r_td)*6+sum(c_yds)*0.1+sum(c_td)*6+sum(c_rec),2) fantasy_points_ppr
     FROM ev JOIN players pl ON pl.gsis_id = ev.pid

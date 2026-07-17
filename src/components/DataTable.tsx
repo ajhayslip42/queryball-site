@@ -12,12 +12,17 @@ export type Column<T> = {
 }
 
 export default function DataTable<T extends Record<string, any>>({
-  rows, columns, defaultSort, dense = false,
+  rows, columns, defaultSort, dense = false, zebra = true, tight = false,
 }: {
   rows: T[]
   columns: Column<T>[]
   defaultSort?: { key: string; dir: 'asc' | 'desc' }
+  /** Reduce cell padding + font size for denser stat tables. */
   dense?: boolean
+  /** Alternating light-row shading for readability. */
+  zebra?: boolean
+  /** Even tighter than dense — for the deepest column packing (Single-Player Overview). */
+  tight?: boolean
 }) {
   const [sort, setSort] = useState(defaultSort)
 
@@ -45,15 +50,17 @@ export default function DataTable<T extends Record<string, any>>({
     })
   }
 
+  const cellPad = tight ? 'py-0.5 px-1.5 text-[10.5px]' : dense ? 'py-1 px-2 text-xs' : ''
+
   return (
     <div className="overflow-x-auto">
-      <table className="qb-table">
+      <table className={clsx('qb-table', zebra && 'qb-zebra')}>
         <thead>
           <tr>
             {columns.map(c => (
               <th key={String(c.key)}
-                className={clsx(dense && 'py-1 px-2 text-xs')}
-                style={{ width: c.width, textAlign: c.align ?? (c.numeric ? 'right' : 'left') }}>
+                className={clsx(cellPad, 'align-bottom leading-tight')}
+                style={{ width: c.width, textAlign: c.align ?? (c.numeric ? 'right' : 'left'), whiteSpace: tight ? 'normal' : undefined }}>
                 <button
                   type="button"
                   onClick={() => toggleSort(String(c.key))}
@@ -71,7 +78,7 @@ export default function DataTable<T extends Record<string, any>>({
             <tr key={i}>
               {columns.map(c => (
                 <td key={String(c.key)}
-                  className={clsx(c.numeric && 'num', dense && 'py-1 px-2 text-xs')}
+                  className={clsx(c.numeric && 'num', cellPad)}
                   style={{ textAlign: c.align ?? (c.numeric ? 'right' : 'left') }}>
                   {c.format ? c.format(r[c.key as keyof T], r) : String(r[c.key as keyof T] ?? '–')}
                 </td>

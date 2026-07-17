@@ -19,6 +19,7 @@ export type Player = {
   position: Position
   team: string
   jersey?: number
+  headshot?: string
 }
 
 /**

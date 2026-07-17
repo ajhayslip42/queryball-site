@@ -1,229 +1,605 @@
 /**
- * TeamPositionDeck — generic team-level position view. REAL DATA.
- * 7 reports, 10+ visuals each, packed table at #2. Drives the 4 Team decks.
+ * TeamPositionDeck — the intra-room view for QB / RB / WR / TE.
+ *
+ * Complete rework: reports are no longer team-vs-team leaderboards (those live
+ * in League Production). Instead every report answers a within-the-room
+ * question: how does Chase compare to Higgins? Who gets the ball on 3rd down?
+ * Who's trending up over the last four weeks?
+ *
+ * Six reports, in this order:
+ *   1. Room Overview        headshots + volume-share treemap + per-player mini
+ *   2. Data Table           every player in the room, position-aware columns
+ *   3. Situational Splits   stacked-bar of intra-room share by down/zone/qtr/score
+ *   4. Weekly Rotation      who was playing which week (share by week)
+ *   5. Efficiency Head-to-Head   yds/tgt, yds/carry, YAC%, catch%, 1D/tgt
+ *   6. Fantasy              PPR points, per-player, within the room
  */
 import DeckShell, { Tile, type DeckTab } from '@/components/deck/DeckShell'
-import DataTable, { type Column } from '@/components/DataTable'
-import { MetricReport, metricsOf, selOf, miniColsOf, F, type MDef } from '@/components/deck/Panels'
-import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
-import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
-import { playsWhere, sliceLabel, thresholdHaving } from '@/lib/slicerSql'
+import { sliceLabel, thresholdHaving } from '@/lib/slicerSql'
 import { playerGameLog } from '@/lib/playerGameSql'
+import { useQuery } from '@/lib/useQuery'
+import DataTable, { type Column } from '@/components/DataTable'
+import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
+import { MetricReport, F, type Metric } from '@/components/deck/Panels'
+import {
+  BarTile, HBarTile, TreemapTile, PctBarTile, PALETTE,
+} from '@/components/charts/Charts'
+import { fmt } from '@/lib/nfl'
+import { TEAMS } from '@/lib/nfl'
 
 type Pos = 'QB' | 'RB' | 'WR' | 'TE'
-// Position-locked deck: clear any global position slicer so wrappers don't cross-pollute.
-const minN = (s: ReturnType<typeof useSlicers>['slicers']) => (s.weeks.length ? 1 : 30)
 
 export default function TeamPositionDeck({ position, title, intro, deckIndex }: {
-  position: Pos; title: string; intro: string; deckIndex: number
+  position: Pos
+  title: string
+  intro: string
+  deckIndex: number
 }) {
   const tabs: DeckTab[] = [
-    { id: 'byteam',  label: 'By Team',          render: () => <ByTeam pos={position} /> },
-    { id: 'data',    label: 'Data Table',       render: () => <DataTab pos={position} /> },
-    { id: 'room',    label: 'Room Detail',      render: () => <Room pos={position} /> },
-    { id: 'eff',     label: 'Efficiency',       render: () => <Eff pos={position} /> },
-    { id: 'depth',   label: position === 'RB' ? 'Run Direction' : 'Air Yards', render: () => <Depth pos={position} /> },
-    { id: 'sit',     label: 'Situational',      render: () => <Situational pos={position} /> },
-    { id: 'fantasy', label: 'Fantasy',          fantasy: true, render: () => <Fantasy pos={position} /> },
+    { id: 'overview',    label: 'Room Overview',        render: () => <RoomOverview pos={position} /> },
+    { id: 'data',        label: 'Data Table',           render: () => <RoomDataTable pos={position} /> },
+    { id: 'situational', label: 'Situational Splits',   render: () => <SituationalSplits pos={position} /> },
+    { id: 'weekly',      label: 'Weekly Rotation',      render: () => <WeeklyRotation pos={position} /> },
+    { id: 'efficiency',  label: 'Efficiency H2H',       render: () => <EfficiencyH2H pos={position} /> },
+    { id: 'fantasy',     label: 'Fantasy',              fantasy: true, render: () => <RoomFantasy pos={position} /> },
   ]
   return (
-    <DeckShell title={title} intro={intro} tabs={tabs} deckIndex={deckIndex}
+    <DeckShell deckIndex={deckIndex} title={title} intro={intro} tabs={tabs}
       slicerGroups={['season','week','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','threshold']} />
   )
 }
 
-/* metric sets (player_week aggregates grouped by team) */
-function prodDefs(pos: Pos): MDef[] {
-  if (pos === 'QB') return [
-    { key: 'py', label: 'Pass Yds', expr: 'sum(passing_yards)', f: 'int' }, { key: 'ptd', label: 'Pass TD', expr: 'sum(passing_tds)', f: 'int' },
-    { key: 'att', label: 'Attempts', expr: 'sum(attempts)', f: 'int' }, { key: 'cmp', label: 'Completions', expr: 'sum(completions)', f: 'int' },
-    { key: 'intc', label: 'INT', expr: 'sum(interceptions)', f: 'int' }, { key: 'fd', label: 'Pass 1st Downs', expr: 'sum(passing_first_downs)', f: 'int' },
-    { key: 'ay', label: 'Air Yards', expr: 'sum(passing_air_yards)', f: 'int' }, { key: 'sk', label: 'Sacks', expr: 'sum(sacks)', f: 'int' },
-    { key: 'ry', label: 'Rush Yds', expr: 'sum(rushing_yards)', f: 'int' }, { key: 'yac', label: 'YAC', expr: 'sum(passing_yards_after_catch)', f: 'int' },
-  ]
-  if (pos === 'RB') return [
-    { key: 'ry', label: 'Rush Yds', expr: 'sum(rushing_yards)', f: 'int' }, { key: 'car', label: 'Carries', expr: 'sum(carries)', f: 'int' },
-    { key: 'rtd', label: 'Rush TD', expr: 'sum(rushing_tds)', f: 'int' }, { key: 'rfd', label: 'Rush 1st Downs', expr: 'sum(rushing_first_downs)', f: 'int' },
-    { key: 'tgt', label: 'Targets', expr: 'sum(targets)', f: 'int' }, { key: 'rec', label: 'Receptions', expr: 'sum(receptions)', f: 'int' },
-    { key: 'recy', label: 'Rec Yds', expr: 'sum(receiving_yards)', f: 'int' }, { key: 'recfd', label: 'Rec 1st Downs', expr: 'sum(receiving_first_downs)', f: 'int' },
-    { key: 'scrim', label: 'Scrimmage Yds', expr: 'sum(rushing_yards+receiving_yards)', f: 'int' }, { key: 'touch', label: 'Touches', expr: 'sum(carries+receptions)', f: 'int' },
-  ]
-  return [
-    { key: 'recy', label: 'Rec Yds', expr: 'sum(receiving_yards)', f: 'int' }, { key: 'tgt', label: 'Targets', expr: 'sum(targets)', f: 'int' },
-    { key: 'rec', label: 'Receptions', expr: 'sum(receptions)', f: 'int' }, { key: 'rtd', label: 'Rec TD', expr: 'sum(receiving_tds)', f: 'int' },
-    { key: 'fd', label: 'Rec 1st Downs', expr: 'sum(receiving_first_downs)', f: 'int' }, { key: 'ay', label: 'Air Yards', expr: 'sum(receiving_air_yards)', f: 'int' },
-    { key: 'yac', label: 'YAC', expr: 'sum(receiving_yards_after_catch)', f: 'int' }, { key: 'epa', label: 'Rec EPA', expr: 'round(sum(receiving_epa),1)', f: 'd1' },
-    { key: 'fdpct', label: '1st Down / Tgt %', expr: 'round(sum(receiving_first_downs)*100.0/nullif(sum(targets),0),1)', f: 'pct' }, { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
-  ]
-}
-function rateDefs(pos: Pos): MDef[] {
-  if (pos === 'QB') return [
-    { key: 'cmppct', label: 'Comp %', expr: 'round(sum(completions)*100.0/nullif(sum(attempts),0),1)', f: 'pct' }, { key: 'ya', label: 'Yards / Att', expr: 'round(sum(passing_yards)*1.0/nullif(sum(attempts),0),2)', f: 'd2' },
-    { key: 'tdpct', label: 'TD %', expr: 'round(sum(passing_tds)*100.0/nullif(sum(attempts),0),1)', f: 'pct' }, { key: 'intpct', label: 'INT %', expr: 'round(sum(interceptions)*100.0/nullif(sum(attempts),0),1)', f: 'pct' },
-    { key: 'fdpct', label: '1st Down %', expr: 'round(sum(passing_first_downs)*100.0/nullif(sum(attempts),0),1)', f: 'pct' }, { key: 'adot', label: 'aDOT', expr: 'round(sum(passing_air_yards)*1.0/nullif(sum(attempts),0),1)', f: 'd1' },
-    { key: 'epa', label: 'Pass EPA', expr: 'round(sum(passing_epa),1)', f: 'd1' }, { key: 'skpct', label: 'Sack %', expr: 'round(sum(sacks)*100.0/nullif(sum(attempts)+sum(sacks),0),1)', f: 'pct' },
-    { key: 'ypg', label: 'Pass Y / Gm', expr: 'round(sum(passing_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' }, { key: 'tdg', label: 'Pass TD / Gm', expr: 'round(sum(passing_tds)*1.0/nullif(count(distinct season||week),0),2)', f: 'd2' },
-  ]
-  if (pos === 'RB') return [
-    { key: 'ypc', label: 'Yards / Carry', expr: 'round(sum(rushing_yards)*1.0/nullif(sum(carries),0),2)', f: 'd2' }, { key: 'fdpct', label: 'Rush 1st Down %', expr: 'round(sum(rushing_first_downs)*100.0/nullif(sum(carries),0),1)', f: 'pct' },
-    { key: 'repa', label: 'Rush EPA', expr: 'round(sum(rushing_epa),1)', f: 'd1' }, { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
-    { key: 'ypr', label: 'Yards / Rec', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(receptions),0),1)', f: 'd1' }, { key: 'recepa', label: 'Rec EPA', expr: 'round(sum(receiving_epa),1)', f: 'd1' },
-    { key: 'scrimg', label: 'Scrim / Gm', expr: 'round(sum(rushing_yards+receiving_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' }, { key: 'touchg', label: 'Touch / Gm', expr: 'round(sum(carries+receptions)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
-    { key: 'totfd', label: 'Total 1st Downs', expr: 'sum(rushing_first_downs+receiving_first_downs)', f: 'int' }, { key: 'ydg', label: 'Scrim Y / Gm', expr: 'round(sum(rushing_yards+receiving_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
-  ]
-  return [
-    { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' }, { key: 'ypr', label: 'Yards / Rec', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(receptions),0),1)', f: 'd1' },
-    { key: 'ypt', label: 'Yards / Tgt', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(targets),0),2)', f: 'd2' }, { key: 'adot', label: 'aDOT', expr: 'round(sum(receiving_air_yards)*1.0/nullif(sum(targets),0),1)', f: 'd1' },
-    { key: 'yacr', label: 'YAC / Rec', expr: 'round(sum(receiving_yards_after_catch)*1.0/nullif(sum(receptions),0),1)', f: 'd1' }, { key: 'fdpct', label: '1st Down / Tgt %', expr: 'round(sum(receiving_first_downs)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
-    { key: 'epa', label: 'Rec EPA', expr: 'round(sum(receiving_epa),1)', f: 'd1' }, { key: 'ypg', label: 'Rec Y / Gm', expr: 'round(sum(receiving_yards)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
-    { key: 'totfd', label: 'Total 1st Downs', expr: 'sum(receiving_first_downs)', f: 'int' }, { key: 'tdg', label: 'Rec TD / Gm', expr: 'round(sum(receiving_tds)*1.0/nullif(count(distinct season||week),0),2)', f: 'd2' },
-  ]
+/* ============================================================================
+ * Shared team selection: the room is a specific team, defaulting to the top
+ * team by volume when the user hasn't chosen. All reports use this.
+ * ========================================================================== */
+function useRoomTeam(): { team: string; label: string } {
+  const { slicers } = useSlicers()
+  const team = slicers.teams[0] ?? 'KC'
+  // TEAMS is a string[] of abbreviations; the abbreviation is the display label
+  // since we don't ship full team names on the client (kept small).
+  return { team, label: team }
 }
 
-function useTeam(pos: Pos, defs: MDef[]) {
-  const { slicers } = useSlicers()
-  const sql = `SELECT recent_team AS cat, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' GROUP BY cat ORDER BY cat`
-  return { q: useQuery<any>(sql, [sql]), slicers }
+function volumeKeyFor(pos: Pos): string {
+  if (pos === 'QB') return 'attempts'
+  if (pos === 'RB') return 'carries'
+  return 'targets'
 }
 
-function ByTeam({ pos }: { pos: Pos }) {
-  const defs = prodDefs(pos); const { q, slicers } = useTeam(pos, defs)
-  return <MetricReport loading={q.loading} title={`Team ${pos} production`} subtitle={sliceLabel(slicers)}
-    mini={{ rows: q.data ?? [], cols: miniColsOf('Team', defs), sort: { key: defs[0].key, dir: 'desc' }, caption: 'Every team' }}
-    panels={[{ rows: q.data ?? [], categoryKey: 'cat', metrics: metricsOf(defs) }]} />
-}
-function Eff({ pos }: { pos: Pos }) {
-  const defs = rateDefs(pos); const { q, slicers } = useTeam(pos, defs)
-  return <MetricReport loading={q.loading} title={`Team ${pos} efficiency & rates`} subtitle={sliceLabel(slicers)}
-    mini={{ rows: q.data ?? [], cols: miniColsOf('Team', defs), caption: 'Rate stats by team' }}
-    panels={[{ rows: q.data ?? [], categoryKey: 'cat', metrics: metricsOf(defs) }]} />
-}
-function Fantasy({ pos }: { pos: Pos }) {
+/* ============================================================================
+ * Report 1 — ROOM OVERVIEW
+ * Headshots row, treemap of the room's share of that team's volume, per-player
+ * mini stat cards. Layout is bespoke: not a small-multiples grid.
+ * ========================================================================== */
+function RoomOverview({ pos }: { pos: Pos }) {
   const { slicers } = useSlicers()
-  const defs: MDef[] = [
-    { key: 'ppr', label: 'PPR Pts', expr: 'sum(fantasy_points_ppr)', f: 'd1' }, { key: 'std', label: 'Standard Pts', expr: 'sum(fantasy_points)', f: 'd1' },
-    { key: 'ppg', label: 'PPR / Gm', expr: 'round(sum(fantasy_points_ppr)*1.0/nullif(count(distinct season||week),0),1)', f: 'd1' },
-    { key: 'passpt', label: 'Passing Pts', expr: 'round(sum(passing_yards*0.04+passing_tds*4-interceptions*2),1)', f: 'd1' },
-    { key: 'rushpt', label: 'Rushing Pts', expr: 'round(sum(rushing_yards*0.1+rushing_tds*6),1)', f: 'd1' },
-    { key: 'recpt', label: 'Receiving Pts', expr: 'round(sum(receiving_yards*0.1+receiving_tds*6+receptions),1)', f: 'd1' },
-    { key: 'td', label: 'Total TD', expr: 'sum(passing_tds+rushing_tds+receiving_tds)', f: 'int' },
-    { key: 'fd', label: 'Total 1st Downs', expr: 'sum(COALESCE(passing_first_downs,0)+COALESCE(rushing_first_downs,0)+COALESCE(receiving_first_downs,0))', f: 'int' },
-    { key: 'yds', label: 'Total Yds', expr: 'sum(COALESCE(passing_yards,0)+COALESCE(rushing_yards,0)+COALESCE(receiving_yards,0))', f: 'int' },
-    { key: 'players', label: 'Distinct Players', expr: 'count(distinct player_id)', f: 'int' },
-  ]
-  const sql = `SELECT recent_team AS cat, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' GROUP BY cat ORDER BY cat`
+  const { team, label } = useRoomTeam()
+  const teamS = slicers.teams.length ? slicers : { ...slicers, teams: [team] }
+  const vol = volumeKeyFor(pos)
+  const sql = `SELECT
+      g.player_id id,
+      g.player_display_name nm,
+      max(pl.headshot) hs,
+      count(distinct g.game_id) gp,
+      sum(g.attempts)::int att, sum(g.completions)::int cmp, sum(g.passing_yards)::int py, sum(g.passing_tds)::int ptd, sum(g.interceptions)::int intc,
+      sum(g.carries)::int car, sum(g.rushing_yards)::int ry, sum(g.rushing_tds)::int rtd,
+      sum(g.targets)::int tgt, sum(g.receptions)::int rec, sum(g.receiving_yards)::int recy, sum(g.receiving_tds)::int retd,
+      sum(g.receiving_air_yards)::int reay, sum(g.receiving_yards_after_catch)::int yac,
+      sum(g.receiving_air_yards_incomplete)::int reay_inc,
+      sum(g.opportunities)::int opps
+    FROM ${playerGameLog(teamS)} g
+    LEFT JOIN players pl ON pl.gsis_id = g.player_id
+    WHERE g."position" = '${pos}'
+    GROUP BY g.player_id, g.player_display_name
+    HAVING sum(g.${vol}) > 0 ${thresholdHaving(teamS)}
+    ORDER BY sum(g.${vol}) DESC
+    LIMIT 8`
   const q = useQuery<any>(sql, [sql])
+  if (q.loading || !q.data) return <Tile><QueryState loading={q.loading} rows={q.data} /></Tile>
+  const rows = q.data
+  const totalVol = rows.reduce((s, r) => s + (r[({ QB:'att', RB:'car', WR:'tgt', TE:'tgt' } as any)[pos]] || 0), 0)
+
+  const treemapData = rows.map(r => ({
+    name: lastName(r.nm),
+    value: r[({ QB:'att', RB:'car', WR:'tgt', TE:'tgt' } as any)[pos]] || 0,
+  }))
+
   return (
     <div className="space-y-4">
-      <FantasyBanner label={`Fantasy · Team ${pos}`} headline={`Where the ${pos} fantasy points live.`}
-        body={`Total and per-game PPR by team, with the scoring breakdown and total first downs.`} />
-      <MetricReport loading={q.loading} mini={{ rows: q.data ?? [], cols: miniColsOf('Team', defs), sort: { key: 'ppr', dir: 'desc' }, caption: 'Team fantasy detail' }}
-        panels={[{ rows: q.data ?? [], categoryKey: 'cat', metrics: metricsOf(defs) }]} />
+      <div>
+        <h3 className="font-display text-lg tracking-tight">{label} — {pos} room</h3>
+        <p className="text-[11.5px] text-muted mt-0.5">{sliceLabel(slicers)}</p>
+      </div>
+
+      {/* Headshots row */}
+      <div className="rounded border border-line bg-paper p-3">
+        <p className="eyebrow mb-2">The Room</p>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+          {rows.map(r => (
+            <div key={r.id} className="flex-shrink-0 w-24 text-center">
+              {r.hs ? (
+                <img src={r.hs} alt={r.nm} className="w-20 h-20 rounded-full object-cover mx-auto border-2 border-line bg-cream" />
+              ) : (
+                <div className="w-20 h-20 rounded-full mx-auto bg-cream flex items-center justify-center text-muted text-xs">
+                  {initials(r.nm)}
+                </div>
+              )}
+              <p className="text-[11px] font-semibold text-ink mt-1.5 truncate" title={r.nm}>{r.nm}</p>
+              <p className="text-[10px] text-muted num">
+                {pos === 'QB' ? `${r.att} att` : pos === 'RB' ? `${r.car} car` : `${r.tgt} tgt`}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Share treemap + share bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="rounded border border-line bg-paper p-3">
+          <p className="eyebrow mb-2">Share of {pos === 'QB' ? 'Attempts' : pos === 'RB' ? 'Carries' : 'Targets'}</p>
+          <TreemapTile data={treemapData} height={220} />
+        </div>
+        <div className="rounded border border-line bg-paper p-3">
+          <p className="eyebrow mb-2">Volume distribution</p>
+          <PctBarTile data={treemapData} height={40} />
+          <div className="mt-3 space-y-1">
+            {rows.slice(0, 5).map(r => {
+              const v = r[({ QB:'att', RB:'car', WR:'tgt', TE:'tgt' } as any)[pos]] || 0
+              const pct = totalVol ? (v / totalVol * 100).toFixed(1) : '0'
+              return (
+                <div key={r.id} className="flex items-center justify-between text-[12px] py-0.5 border-b border-line last:border-0">
+                  <span className="truncate">{r.nm}</span>
+                  <span className="num text-muted">{v} <span className="text-[10px]">({pct}%)</span></span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Per-player mini cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {rows.slice(0, 6).map(r => (
+          <div key={r.id} className="rounded border border-line bg-paper p-3">
+            <div className="flex items-center gap-2 mb-2">
+              {r.hs ? (
+                <img src={r.hs} alt="" className="w-10 h-10 rounded-full object-cover border border-line" />
+              ) : <div className="w-10 h-10 rounded-full bg-cream" />}
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-ink truncate">{r.nm}</p>
+                <p className="text-[10px] text-muted num">{r.gp} games</p>
+              </div>
+            </div>
+            <MiniStats pos={pos} row={r} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+function MiniStats({ pos, row }: { pos: Pos; row: any }) {
+  const stats = pos === 'QB' ? [
+    ['Cmp/Att', `${row.cmp}/${row.att}`], ['Pass Yds', fmt.int(row.py)], ['TD', row.ptd], ['INT', row.intc],
+  ] : pos === 'RB' ? [
+    ['Carries', row.car], ['Rush Yds', fmt.int(row.ry)], ['Rush TD', row.rtd], ['Opps', row.opps],
+    ['Targets', row.tgt], ['Rec Yds', fmt.int(row.recy)],
+  ] : [
+    ['Targets', row.tgt], ['Rec', row.rec], ['Rec Yds', fmt.int(row.recy)], ['Rec TD', row.retd],
+    ['Air Yds', fmt.int(row.reay)], ['YAC', fmt.int(row.yac)],
+  ]
+  return (
+    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+      {stats.map(([k, v]) => (
+        <div key={String(k)} className="flex justify-between text-[11px]">
+          <span className="text-muted">{k}</span><span className="num text-ink font-semibold">{String(v)}</span>
+        </div>
+      ))}
     </div>
   )
 }
 
-function Room({ pos }: { pos: Pos }) {
-  const { slicers } = useSlicers(); const team = slicers.teams[0] ?? 'KC'
-  const defs = prodDefs(pos)
-  // Default the team in via a slicer override so all other filters still apply consistently.
+/* ============================================================================
+ * Report 2 — DATA TABLE
+ * Densely packed. Position-aware columns. Zebra. Tight font.
+ * ========================================================================== */
+function RoomDataTable({ pos }: { pos: Pos }) {
+  const { slicers } = useSlicers()
+  const { team, label } = useRoomTeam()
   const teamS = slicers.teams.length ? slicers : { ...slicers, teams: [team] }
-  const sql = `SELECT player_display_name AS cat, ${selOf(defs)} FROM ${playerGameLog(teamS)} g WHERE "position"='${pos}' GROUP BY cat HAVING ${defs[0].expr} > 0 ${thresholdHaving(slicers)} ORDER BY ${defs[0].key} DESC`
+  const sql = `SELECT
+      g.player_display_name nm,
+      count(distinct g.game_id) gp,
+      sum(g.attempts)::int att, sum(g.completions)::int cmp, sum(g.passing_yards)::int py, sum(g.passing_tds)::int ptd, sum(g.interceptions)::int intc, sum(g.passing_first_downs)::int pfd,
+      sum(g.carries)::int car, sum(g.rushing_yards)::int ry, sum(g.rushing_tds)::int rtd, sum(g.rushing_first_downs)::int rfd,
+      sum(g.targets)::int tgt, sum(g.receptions)::int rec, sum(g.receiving_yards)::int recy, sum(g.receiving_tds)::int retd, sum(g.receiving_first_downs)::int recfd,
+      sum(g.receiving_air_yards)::int reay, sum(g.receiving_air_yards_completed)::int reay_c, sum(g.receiving_air_yards_incomplete)::int reay_i,
+      sum(g.receiving_yards_after_catch)::int yac,
+      sum(g.opportunities)::int opps,
+      round(sum(g.receiving_yards)*1.0/nullif(sum(g.receptions),0),1) ypr,
+      round(sum(g.receiving_yards)*1.0/nullif(sum(g.targets),0),1) ypt,
+      round(sum(g.rushing_yards)*1.0/nullif(sum(g.carries),0),2) ypc,
+      round(sum(g.receptions)*100.0/nullif(sum(g.targets),0),1) catch_pct,
+      round(sum(g.receiving_yards_after_catch)*100.0/nullif(sum(g.receiving_yards),0),1) yac_pct
+    FROM ${playerGameLog(teamS)} g
+    WHERE g."position" = '${pos}'
+    GROUP BY g.player_display_name
+    HAVING count(distinct g.game_id) >= 1 ${thresholdHaving(teamS)}
+    ORDER BY sum(g.${volumeKeyFor(pos)}) DESC
+    LIMIT 40`
+  const q = useQuery<any>(sql, [sql])
+  const cols = tableColumnsFor(pos)
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-display text-lg tracking-tight">{label} · {pos} — All room data</h3>
+        <p className="text-[11.5px] text-muted mt-0.5">{sliceLabel(slicers)}</p>
+      </div>
+      <QueryState loading={q.loading} rows={q.data}>
+        <div className="rounded border border-line bg-paper p-2 overflow-x-auto">
+          <DataTable rows={q.data ?? []} columns={cols}
+            defaultSort={{ key: cols[2]?.key as string, dir: 'desc' }} tight zebra />
+        </div>
+      </QueryState>
+    </div>
+  )
+}
+
+function tableColumnsFor(pos: Pos): Column<any>[] {
+  const base: Column<any>[] = [
+    { key: 'nm', label: 'Player' },
+    { key: 'gp', label: 'GP', numeric: true },
+  ]
+  if (pos === 'QB') return [
+    ...base,
+    { key: 'att', label: 'Att', numeric: true }, { key: 'cmp', label: 'Cmp', numeric: true },
+    { key: 'py', label: 'Pass Yds', numeric: true }, { key: 'ptd', label: 'Pass TD', numeric: true },
+    { key: 'intc', label: 'INT', numeric: true }, { key: 'pfd', label: 'Pass 1D', numeric: true },
+    { key: 'car', label: 'Car', numeric: true }, { key: 'ry', label: 'Rush Yds', numeric: true },
+    { key: 'rtd', label: 'Rush TD', numeric: true },
+  ]
+  if (pos === 'RB') return [
+    ...base,
+    { key: 'car', label: 'Carries', numeric: true }, { key: 'ry', label: 'Rush Yds', numeric: true },
+    { key: 'rtd', label: 'Rush TD', numeric: true }, { key: 'rfd', label: 'Rush 1D', numeric: true },
+    { key: 'ypc', label: 'YPC', numeric: true, format: F.d2 },
+    { key: 'tgt', label: 'Tgt', numeric: true }, { key: 'rec', label: 'Rec', numeric: true },
+    { key: 'recy', label: 'Rec Yds', numeric: true }, { key: 'retd', label: 'Rec TD', numeric: true },
+    { key: 'opps', label: 'Opps', numeric: true },
+  ]
+  // WR / TE
+  return [
+    ...base,
+    { key: 'tgt', label: 'Tgt', numeric: true }, { key: 'rec', label: 'Rec', numeric: true },
+    { key: 'recy', label: 'Rec Yds', numeric: true }, { key: 'retd', label: 'Rec TD', numeric: true },
+    { key: 'recfd', label: 'Rec 1D', numeric: true },
+    { key: 'reay', label: 'AirY', numeric: true }, { key: 'reay_c', label: 'AirY (comp)', numeric: true },
+    { key: 'reay_i', label: 'AirY (inc)', numeric: true },
+    { key: 'yac', label: 'YAC', numeric: true },
+    { key: 'catch_pct', label: 'Catch%', numeric: true, format: F.pct },
+    { key: 'yac_pct', label: 'YAC%', numeric: true, format: F.pct },
+    { key: 'ypt', label: 'Yds/Tgt', numeric: true, format: F.d1 },
+  ]
+}
+
+/* ============================================================================
+ * Report 3 — SITUATIONAL SPLITS
+ * For each of down, zone, quarter, and score-state, a stacked bar of intra-room
+ * volume share. This is your "who gets carries on 3rd down?" report.
+ * ========================================================================== */
+function SituationalSplits({ pos }: { pos: Pos }) {
+  const { slicers } = useSlicers()
+  const { team, label } = useRoomTeam()
+  const teamS = slicers.teams.length ? slicers : { ...slicers, teams: [team] }
+  const volCol = volumeKeyFor(pos)
+  const volLabel = pos === 'QB' ? 'Attempts' : pos === 'RB' ? 'Carries' : 'Targets'
+
+  // We pull a single wide query grouped by (player, dim, bucket). Then split per-panel.
+  // Because we need multiple dims, we run four queries in parallel (via multiple hooks).
+  const dims: { key: string; label: string; expr: string; buckets: (string | number)[] }[] = [
+    { key: 'dn',  label: 'Down',        expr: 'down',
+      buckets: [1,2,3,4] },
+    { key: 'zn',  label: 'Field Zone',  expr: `CASE WHEN yardline_100<=5 THEN 'Goal' WHEN yardline_100<=20 THEN 'RZ' WHEN yardline_100 BETWEEN 21 AND 49 THEN 'Opp' WHEN yardline_100 BETWEEN 50 AND 79 THEN 'Own' ELSE 'BackedUp' END`,
+      buckets: ['Goal','RZ','Opp','Own','BackedUp'] },
+    { key: 'qtr', label: 'Quarter',     expr: `CASE WHEN qtr=5 THEN 'OT' ELSE 'Q'||qtr END`,
+      buckets: ['Q1','Q2','Q3','Q4','OT'] },
+    { key: 'sd',  label: 'Score State', expr: `CASE WHEN score_differential<=-9 THEN 'Losing 9+' WHEN score_differential<=-1 THEN 'Losing 1-8' WHEN score_differential=0 THEN 'Tied' WHEN score_differential<=8 THEN 'Winning 1-8' ELSE 'Winning 9+' END`,
+      buckets: ['Losing 9+','Losing 1-8','Tied','Winning 1-8','Winning 9+'] },
+  ]
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-display text-lg tracking-tight">{label} · {pos} — Situational room share</h3>
+        <p className="text-[11.5px] text-muted mt-0.5">Who gets the {volLabel.toLowerCase()} in each situation? · {sliceLabel(slicers)}</p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {dims.map(dim => <SituationalPanel key={dim.key} pos={pos} teamS={teamS} team={team} dim={dim} volCol={volCol} volLabel={volLabel} />)}
+      </div>
+    </div>
+  )
+}
+function SituationalPanel({ pos, teamS, team, dim, volCol, volLabel }: {
+  pos: Pos; teamS: any; team: string; dim: { key: string; label: string; expr: string; buckets: (string | number)[] };
+  volCol: string; volLabel: string
+}) {
+  // Room's rush/pass count broken down by the situation × player.
+  const roleFilter = pos === 'QB'
+    ? "pass_attempt=1 AND passer_player_id IS NOT NULL"
+    : pos === 'RB'
+    ? "rush_attempt=1 AND rusher_player_id IS NOT NULL"
+    : "pass_attempt=1 AND receiver_player_id IS NOT NULL"
+  const roleId = pos === 'QB' ? 'passer_player_id' : pos === 'RB' ? 'rusher_player_id' : 'receiver_player_id'
+  const sql = `
+    WITH ev AS (
+      SELECT ${roleId} pid, ${dim.expr} bucket
+      FROM plays WHERE ${roleFilter}
+        AND posteam = '${team}' AND season IN (${teamS.seasons.join(',') || '2025'}) AND season_type = 'REG'
+    )
+    SELECT pl.display_name nm, ev.bucket, count(*)::int v
+    FROM ev JOIN players pl ON pl.gsis_id = ev.pid
+    JOIN (SELECT gsis_id, position FROM players) po ON po.gsis_id = ev.pid
+    WHERE po.position = '${pos}'
+    GROUP BY pl.display_name, ev.bucket
+    HAVING count(*) > 0`
+  const q = useQuery<any>(sql, [sql])
+  if (q.loading || !q.data) return <div className="rounded border border-line bg-paper p-3"><QueryState loading={q.loading} rows={q.data} /></div>
+  // Pivot into recharts-friendly stacked-bar rows: one row per bucket, one column per player.
+  const rows = q.data
+  const players = [...new Set(rows.map(r => r.nm))].slice(0, 8) // cap for legibility
+  const pivot = dim.buckets.map(b => {
+    const row: any = { name: String(b) }
+    let tot = 0
+    players.forEach(p => {
+      const rec = rows.find(r => r.nm === p && String(r.bucket) === String(b))
+      row[p as string] = rec?.v ?? 0
+      tot += row[p as string]
+    })
+    row._tot = tot
+    return row
+  })
+  const colors = [PALETTE.accent, PALETTE.accent2, PALETTE.ok, PALETTE.bad, PALETTE.cool, '#9AAEB8', '#C98A3B', '#4B698A']
+  return (
+    <div className="rounded border border-line bg-paper p-3">
+      <p className="eyebrow mb-2">{volLabel} by {dim.label}</p>
+      <div style={{ height: 220 }}>
+        {/* Custom SVG stacked-bar. Recharts default is fine but this pivots simpler. */}
+        <StackedShareBars data={pivot} keys={players as string[]} colors={colors} />
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
+        {(players as string[]).map((p, i) => (
+          <span key={p} className="inline-flex items-center gap-1 text-[9.5px]">
+            <span className="inline-block h-2 w-2 rounded-sm" style={{ background: colors[i % colors.length] }} />
+            <span className="text-ink">{lastName(p)}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+function StackedShareBars({ data, keys, colors }: { data: any[]; keys: string[]; colors: string[] }) {
+  // Renders one horizontal stacked bar per row (bucket), with each key's share.
+  return (
+    <div className="space-y-2">
+      {data.map(row => (
+        <div key={row.name}>
+          <div className="flex justify-between mb-0.5">
+            <span className="text-[10.5px] text-muted">{row.name}</span>
+            <span className="text-[10px] text-muted num">{row._tot}</span>
+          </div>
+          <div className="flex w-full rounded overflow-hidden h-4 border border-line">
+            {keys.map((k, i) => {
+              const v = Number(row[k]) || 0
+              const pct = row._tot ? (v / row._tot) * 100 : 0
+              if (pct === 0) return null
+              return (
+                <div key={k} className="text-[9px] font-semibold text-white text-center overflow-hidden flex items-center justify-center"
+                  title={`${k}: ${v} (${pct.toFixed(1)}%)`}
+                  style={{ background: colors[i % colors.length], width: `${pct}%` }}>
+                  {pct >= 15 ? `${pct.toFixed(0)}%` : ''}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ============================================================================
+ * Report 4 — WEEKLY ROTATION
+ * Who was playing which week. Stacked bar per week showing volume share, plus a
+ * per-player line ("what was Chase's target load week over week?").
+ * ========================================================================== */
+function WeeklyRotation({ pos }: { pos: Pos }) {
+  const { slicers } = useSlicers()
+  const { team, label } = useRoomTeam()
+  const teamS = slicers.teams.length ? slicers : { ...slicers, teams: [team] }
+  const volCol = volumeKeyFor(pos)
+  const volLabel = pos === 'QB' ? 'Attempts' : pos === 'RB' ? 'Carries' : 'Targets'
+
+  const sql = `SELECT week, player_display_name nm, sum(${volCol})::int v
+    FROM ${playerGameLog(teamS)} g WHERE g."position" = '${pos}'
+    GROUP BY week, player_display_name HAVING sum(${volCol}) > 0
+    ORDER BY week`
+  const q = useQuery<any>(sql, [sql])
+  if (q.loading || !q.data || q.data.length === 0) return <Tile><QueryState loading={q.loading} rows={q.data} /></Tile>
+  const rows = q.data
+  const weeks = [...new Set(rows.map(r => r.week))].sort((a: any, b: any) => a - b)
+  const totalPer = new Map<string, number>()
+  rows.forEach((r: any) => totalPer.set(r.nm, (totalPer.get(r.nm) || 0) + r.v))
+  const players = Array.from(totalPer.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n]) => n)
+  const pivot = weeks.map((w: any) => {
+    const row: any = { name: `W${w}` }
+    let tot = 0
+    players.forEach(p => {
+      const rec = rows.find((r: any) => r.week === w && r.nm === p)
+      row[p] = rec?.v ?? 0; tot += row[p]
+    })
+    row._tot = tot
+    return row
+  })
+  const colors = [PALETTE.accent, PALETTE.accent2, PALETTE.ok, PALETTE.bad, PALETTE.cool, '#9AAEB8', '#C98A3B', '#4B698A']
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-display text-lg tracking-tight">{label} · {pos} — Week-by-week rotation</h3>
+        <p className="text-[11.5px] text-muted mt-0.5">{sliceLabel(slicers)}</p>
+      </div>
+      <div className="rounded border border-line bg-paper p-3">
+        <p className="eyebrow mb-2">{volLabel} share by week</p>
+        <StackedShareBars data={pivot} keys={players} colors={colors} />
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
+          {players.map((p, i) => (
+            <span key={p} className="inline-flex items-center gap-1 text-[9.5px]">
+              <span className="inline-block h-2 w-2 rounded-sm" style={{ background: colors[i % colors.length] }} />
+              <span>{lastName(p)}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      {/* Per-player mini bars */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {players.slice(0, 6).map(p => {
+          const data = weeks.map((w: any) => ({
+            name: `W${w}`,
+            value: rows.find((r: any) => r.week === w && r.nm === p)?.v ?? 0,
+          }))
+          return (
+            <div key={p} className="rounded border border-line bg-paper p-3">
+              <p className="text-[11px] font-semibold text-ink truncate">{p}</p>
+              <p className="text-[10px] text-muted mb-1">{volLabel.toLowerCase()}/wk</p>
+              <BarTile data={data} height={100} color={PALETTE.accent} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================================
+ * Report 5 — EFFICIENCY H2H
+ * Per-touch rates only. Yds/tgt, yds/carry, YAC%, catch%, 1D/tgt. Horizontal
+ * bars sorted so the top rate is obvious.
+ * ========================================================================== */
+function EfficiencyH2H({ pos }: { pos: Pos }) {
+  const { slicers } = useSlicers()
+  const { team, label } = useRoomTeam()
+  const teamS = slicers.teams.length ? slicers : { ...slicers, teams: [team] }
+  const sql = `SELECT g.player_display_name nm,
+      count(distinct g.game_id) gp,
+      round(sum(g.passing_yards)*1.0/nullif(sum(g.attempts),0),2) ypa,
+      round(sum(g.completions)*100.0/nullif(sum(g.attempts),0),1) cmp_pct,
+      round(sum(g.passing_yards)*1.0/nullif(sum(g.completions),0),1) ypc_pass,
+      round(sum(g.rushing_yards)*1.0/nullif(sum(g.carries),0),2) ypc,
+      round(sum(g.receiving_yards)*1.0/nullif(sum(g.receptions),0),1) ypr,
+      round(sum(g.receiving_yards)*1.0/nullif(sum(g.targets),0),1) ypt,
+      round(sum(g.receptions)*100.0/nullif(sum(g.targets),0),1) catch_pct,
+      round(sum(g.receiving_yards_after_catch)*100.0/nullif(sum(g.receiving_yards),0),1) yac_pct,
+      round(sum(g.receiving_first_downs)*100.0/nullif(sum(g.targets),0),1) fd_pct,
+      round(sum(g.receiving_air_yards)*1.0/nullif(sum(g.targets),0),1) adot
+    FROM ${playerGameLog(teamS)} g WHERE g."position" = '${pos}'
+    GROUP BY g.player_display_name
+    HAVING count(distinct g.game_id) >= 1 AND sum(g.${volumeKeyFor(pos)}) > 0 ${thresholdHaving(teamS)}
+    ORDER BY sum(g.${volumeKeyFor(pos)}) DESC LIMIT 8`
+  const q = useQuery<any>(sql, [sql])
+  if (q.loading || !q.data) return <Tile><QueryState loading={q.loading} rows={q.data} /></Tile>
+  const rows = q.data
+  const metricSet: { key: string; label: string; fmt: (v: number) => string }[] =
+    pos === 'QB' ? [
+      { key: 'ypa', label: 'Yds / Att', fmt: F.d2 },
+      { key: 'cmp_pct', label: 'Comp %', fmt: F.pct },
+      { key: 'ypc_pass', label: 'Yds / Comp', fmt: F.d1 },
+    ] : pos === 'RB' ? [
+      { key: 'ypc', label: 'Yds / Carry', fmt: F.d2 },
+      { key: 'ypr', label: 'Yds / Rec', fmt: F.d1 },
+      { key: 'catch_pct', label: 'Catch %', fmt: F.pct },
+    ] : [
+      { key: 'ypt', label: 'Yds / Tgt', fmt: F.d1 },
+      { key: 'ypr', label: 'Yds / Rec', fmt: F.d1 },
+      { key: 'catch_pct', label: 'Catch %', fmt: F.pct },
+      { key: 'yac_pct', label: 'YAC %', fmt: F.pct },
+      { key: 'fd_pct', label: '1D / Tgt', fmt: F.pct },
+      { key: 'adot', label: 'aDOT', fmt: F.d1 },
+    ]
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-display text-lg tracking-tight">{label} · {pos} — Efficiency head-to-head</h3>
+        <p className="text-[11.5px] text-muted mt-0.5">Per-touch productivity within the room · {sliceLabel(slicers)}</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {metricSet.map(m => {
+          const data = rows.map(r => ({ name: lastName(r.nm), value: r[m.key] ?? 0 })).sort((a, b) => b.value - a.value)
+          return (
+            <div key={m.key} className="rounded border border-line bg-paper p-3">
+              <p className="eyebrow mb-2">{m.label}</p>
+              <HBarTile data={data} height={22 * data.length + 20} color={PALETTE.accent2} formatX={m.fmt} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ============================================================================
+ * Report 6 — FANTASY (room-only)
+ * Purely for internal room comparison. Keeps PPR here, nowhere else.
+ * ========================================================================== */
+function RoomFantasy({ pos }: { pos: Pos }) {
+  const { slicers } = useSlicers()
+  const { team, label } = useRoomTeam()
+  const teamS = slicers.teams.length ? slicers : { ...slicers, teams: [team] }
+  const sql = `SELECT g.player_display_name nm,
+      count(distinct g.game_id) gp,
+      round(sum(g.fantasy_points),1) std,
+      round(sum(g.fantasy_points_ppr),1) ppr,
+      round(sum(g.fantasy_points_ppr)/nullif(count(distinct g.game_id),0),1) ppg,
+      sum(g.passing_tds+g.rushing_tds+g.receiving_tds)::int totd,
+      sum(g.passing_yards+g.rushing_yards+g.receiving_yards)::int totyd,
+      sum(g.receptions)::int rec, sum(g.opportunities)::int opps
+    FROM ${playerGameLog(teamS)} g WHERE g."position" = '${pos}'
+    GROUP BY g.player_display_name HAVING count(distinct g.game_id) >= 1 ${thresholdHaving(teamS)}
+    ORDER BY ppr DESC NULLS LAST LIMIT 20`
   const q = useQuery<any>(sql, [sql])
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted">{team}'s {pos} room. Pick a team in the rail (Team filter) to switch rooms.</p>
-      <MetricReport loading={q.loading} title={`${team} — ${pos} room`} subtitle={sliceLabel(slicers)}
-        mini={{ rows: q.data ?? [], cols: miniColsOf('Player', defs), sort: { key: defs[0].key, dir: 'desc' }, caption: 'Players in this room' }}
-        panels={[{ rows: q.data ?? [], categoryKey: 'cat', short: true, metrics: metricsOf(defs) }]} />
+      <FantasyBanner label={`Fantasy · ${label} ${pos}`} headline={`How the room's PPR is distributed.`}
+        body="Cumulative PPR is the only spot on the site where fantasy points appear. Points-per-game is the read that survives injuries." />
+      <QueryState loading={q.loading} rows={q.data}>
+        <div className="rounded border border-line bg-paper p-2 overflow-x-auto">
+          <DataTable rows={q.data ?? []}
+            columns={[
+              { key: 'nm', label: 'Player' },
+              { key: 'gp', label: 'GP', numeric: true },
+              { key: 'ppr', label: 'PPR', numeric: true, format: F.d1 },
+              { key: 'ppg', label: 'PPR/G', numeric: true, format: F.d1 },
+              { key: 'std', label: 'Std', numeric: true, format: F.d1 },
+              { key: 'totd', label: 'Total TD', numeric: true },
+              { key: 'totyd', label: 'Total Yds', numeric: true },
+              { key: 'rec', label: 'Rec', numeric: true },
+              { key: 'opps', label: 'Opps', numeric: true },
+            ]}
+            defaultSort={{ key: 'ppr', dir: 'desc' }} dense zebra />
+        </div>
+      </QueryState>
     </div>
   )
 }
 
-/* plays-based: Air Yards (QB/WR/TE) or Run Direction (RB), by team */
-function Depth({ pos }: { pos: Pos }) {
-  const { slicers } = useSlicers(); const w = playsWhere(slicers)
-  if (pos === 'RB') {
-    const defs: MDef[] = [
-      { key: 'car', label: 'Carries', expr: 'count(*)', f: 'int' }, { key: 'yds', label: 'Rush Yds', expr: 'sum(rushing_yards)', f: 'int' },
-      { key: 'ypc', label: 'Yards / Carry', expr: 'round(avg(rushing_yards),2)', f: 'd2' }, { key: 'epa', label: 'EPA / rush', expr: 'round(avg(epa),3)', f: 'epa' },
-      { key: 'fd', label: '1st Downs', expr: 'sum(first_down)', f: 'int' }, { key: 'fdpct', label: '1st Down %', expr: 'round(sum(first_down)*100.0/count(*),1)', f: 'pct' },
-      { key: 'lft', label: 'Left %', expr: "round(count(*) FILTER(WHERE run_location='left')*100.0/count(*),1)", f: 'pct' },
-      { key: 'mid', label: 'Middle %', expr: "round(count(*) FILTER(WHERE run_location='middle')*100.0/count(*),1)", f: 'pct' },
-      { key: 'rgt', label: 'Right %', expr: "round(count(*) FILTER(WHERE run_location='right')*100.0/count(*),1)", f: 'pct' },
-      { key: 'expl', label: 'Explosive (10+)', expr: 'count(*) FILTER(WHERE rushing_yards>=10)', f: 'int' },
-    ]
-    const sql = `SELECT posteam AS cat, ${selOf(defs)} FROM plays WHERE rush_attempt=1 AND posteam IS NOT NULL ${w} GROUP BY cat HAVING count(*)>${minN(slicers)} ORDER BY cat`
-    const q = useQuery<any>(sql, [sql])
-    return <MetricReport loading={q.loading} title="Rushing direction & efficiency by team" subtitle={sliceLabel(slicers)}
-      mini={{ rows: q.data ?? [], cols: miniColsOf('Team', defs), caption: 'By team' }}
-      panels={[{ rows: q.data ?? [], categoryKey: 'cat', metrics: metricsOf(defs) }]} />
-  }
-  const idc = pos === 'QB' ? 'passer_player_id' : 'receiver_player_id'
-  const where = pos === 'QB' ? w : `${w} AND ${idc} IN (SELECT gsis_id FROM players WHERE position='${pos}')`
-  const defs: MDef[] = [
-    { key: 'att', label: 'Attempts', expr: 'count(*)', f: 'int' }, { key: 'cmp', label: 'Completions', expr: 'sum(complete_pass)', f: 'int' },
-    { key: 'yds', label: 'Yards', expr: 'sum(passing_yards)', f: 'int' }, { key: 'adot', label: 'aDOT', expr: 'round(avg(air_yards),1)', f: 'd1' },
-    { key: 'deep', label: 'Deep % (20+)', expr: 'round(count(*) FILTER(WHERE air_yards>=20)*100.0/count(*),1)', f: 'pct' },
-    { key: 'epa', label: 'EPA / play', expr: 'round(avg(epa),3)', f: 'epa' }, { key: 'fd', label: '1st Downs', expr: 'sum(first_down)', f: 'int' },
-    { key: 'fdpct', label: '1st Down %', expr: 'round(sum(first_down)*100.0/count(*),1)', f: 'pct' },
-    { key: 'yac', label: 'YAC', expr: 'sum(yards_after_catch)', f: 'int' }, { key: 'td', label: 'TDs', expr: 'sum(touchdown)', f: 'int' },
-  ]
-  const sql = `SELECT posteam AS cat, ${selOf(defs)} FROM plays WHERE pass_attempt=1 AND air_yards IS NOT NULL AND posteam IS NOT NULL ${where} GROUP BY cat HAVING count(*)>${minN(slicers)} ORDER BY cat`
-  const q = useQuery<any>(sql, [sql])
-  return <MetricReport loading={q.loading} title={`${pos === 'QB' ? 'Team passing' : pos + ' targets'} by depth`} subtitle={sliceLabel(slicers)}
-    mini={{ rows: q.data ?? [], cols: miniColsOf('Team', defs), caption: 'Depth-of-target by team' }}
-    panels={[{ rows: q.data ?? [], categoryKey: 'cat', metrics: metricsOf(defs) }]} />
+/* ============================================================================
+ * Utilities
+ * ========================================================================== */
+function lastName(s: string): string {
+  if (!s) return ''
+  const parts = s.split(' ')
+  return parts[parts.length - 1] || s
 }
-
-function Situational({ pos }: { pos: Pos }) {
-  const { slicers } = useSlicers(); const w = playsWhere(slicers)
-  const role = pos === 'RB' ? 'rush_attempt=1' : 'pass_attempt=1'
-  const filt = pos === 'QB' || pos === 'RB' ? '' : `AND receiver_player_id IN (SELECT gsis_id FROM players WHERE position='${pos}')`
-  const ydCol = pos === 'RB' ? 'rushing_yards' : pos === 'QB' ? 'passing_yards' : 'receiving_yards'
-  const defs: MDef[] = [
-    { key: 'n', label: 'Plays', expr: 'count(*)', f: 'int' },
-    { key: 'fdpct', label: '1st Down %', expr: 'round(sum(first_down)*100.0/count(*),1)', f: 'pct' },
-    { key: 'third', label: '3rd-Down Conv %', expr: 'round(sum(first_down) FILTER(WHERE down=3)*100.0/nullif(count(*) FILTER(WHERE down=3),0),1)', f: 'pct' },
-    { key: 'rzn', label: 'Red-Zone Plays', expr: 'count(*) FILTER(WHERE yardline_100<=20)', f: 'int' },
-    { key: 'rztd', label: 'RZ TD %', expr: 'round(sum(touchdown) FILTER(WHERE yardline_100<=20)*100.0/nullif(count(*) FILTER(WHERE yardline_100<=20),0),1)', f: 'pct' },
-    { key: 'gl', label: 'Goal-Line Plays', expr: 'count(*) FILTER(WHERE yardline_100<=5)', f: 'int' },
-    { key: 'epa', label: 'EPA / play', expr: 'round(avg(epa),3)', f: 'epa' },
-    { key: 'sr', label: 'Success %', expr: 'round(sum(success)*100.0/count(*),1)', f: 'pct' },
-    { key: 'yds', label: 'Yards', expr: `sum(${ydCol})`, f: 'int' },
-    { key: 'td', label: 'TDs', expr: 'sum(touchdown)', f: 'int' },
-  ]
-  const sql = `SELECT posteam AS cat, ${selOf(defs)} FROM plays WHERE ${role} AND posteam IS NOT NULL ${filt} ${w} GROUP BY cat HAVING count(*)>${minN(slicers)} ORDER BY cat`
-  const q = useQuery<any>(sql, [sql])
-  return <MetricReport loading={q.loading} title={`Situational — ${pos}`} subtitle={`Third down, red zone, goal line · ${sliceLabel(slicers)}`}
-    mini={{ rows: q.data ?? [], cols: miniColsOf('Team', defs), caption: 'Situational by team' }}
-    panels={[{ rows: q.data ?? [], categoryKey: 'cat', metrics: metricsOf(defs) }]} />
-}
-
-/* Report #2 — packed per-player table */
-function DataTab({ pos }: { pos: Pos }) {
-  const { slicers } = useSlicers()
-  const sql = `SELECT player_display_name nm, recent_team tm, count(distinct game_id) g,
-      sum(attempts)::int att, sum(passing_yards)::int py, sum(passing_tds)::int ptd, sum(interceptions)::int intc, sum(passing_first_downs)::int pfd,
-      sum(carries)::int car, sum(rushing_yards)::int ry, sum(rushing_tds)::int rtd, sum(rushing_first_downs)::int rfd,
-      sum(targets)::int tgt, sum(receptions)::int rec, sum(receiving_yards)::int recy, sum(receiving_tds)::int retd, sum(receiving_first_downs)::int recfd,
-      round(sum(receiving_air_yards)*1.0/nullif(sum(targets),0),1) adot, sum(receiving_yards_after_catch)::int yac,
-      sum(receiving_air_yards)::int ay, round(sum(targets)*1.0/nullif(count(distinct game_id),0),1) tpg, (sum(passing_yards)+sum(rushing_yards)+sum(receiving_yards))::int tyd
-    FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}' GROUP BY 1,2 HAVING count(distinct game_id)>0 ORDER BY tyd DESC LIMIT 80`
-  const q = useQuery<any>(sql, [sql])
-  const all: Column<any>[] = [
-    { key: 'nm', label: 'Player' }, { key: 'tm', label: 'Tm' }, { key: 'g', label: 'G', numeric: true },
-    { key: 'att', label: 'Att', numeric: true }, { key: 'py', label: 'PaYd', numeric: true }, { key: 'ptd', label: 'PaTD', numeric: true }, { key: 'intc', label: 'INT', numeric: true }, { key: 'pfd', label: 'Pa1D', numeric: true },
-    { key: 'car', label: 'Car', numeric: true }, { key: 'ry', label: 'RuYd', numeric: true }, { key: 'rtd', label: 'RuTD', numeric: true }, { key: 'rfd', label: 'Ru1D', numeric: true },
-    { key: 'tgt', label: 'Tgt', numeric: true }, { key: 'rec', label: 'Rec', numeric: true }, { key: 'recy', label: 'ReYd', numeric: true }, { key: 'retd', label: 'ReTD', numeric: true }, { key: 'recfd', label: 'Re1D', numeric: true },
-    { key: 'adot', label: 'aDOT', numeric: true, format: F.d1 }, { key: 'yac', label: 'YAC', numeric: true }, { key: 'ay', label: 'AirYd', numeric: true }, { key: 'tpg', label: 'Tgt/G', numeric: true, format: F.d1 }, { key: 'tyd', label: 'TotYd', numeric: true },
-  ]
-  const drop = pos === 'QB' ? ['tgt', 'rec', 'recy', 'retd', 'recfd', 'adot', 'yac', 'ay', 'tpg'] : pos === 'RB' ? ['att', 'py', 'ptd', 'intc', 'pfd', 'adot'] : ['att', 'py', 'ptd', 'intc', 'pfd', 'car', 'ry', 'rtd', 'rfd']
-  const cols = all.filter(c => !drop.includes(String(c.key)))
-  return (
-    <Tile title={`Every ${pos} — packed metrics`} subtitle={`${sliceLabel(slicers)} · scroll horizontally`} span={12}>
-      <QueryState q={q} height={460}>{rows => <DataTable rows={rows} columns={cols} defaultSort={{ key: 'tyd', dir: 'desc' }} dense />}</QueryState>
-    </Tile>
-  )
+function initials(s: string): string {
+  if (!s) return ''
+  return s.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
 }

@@ -7,8 +7,8 @@
  * Each returns a string beginning with " AND ..." (or '').
  */
 
-import type { Slicers, DistanceBucket, ScoreState, FieldZone, PassDepth, Direction, ThreshKey } from './slicers'
-import { SCORE_LABELS, DISTANCE_LABELS, DEPTH_LABELS, DIR_LABELS, ZONE_LABELS, THRESH_LABELS } from './slicers'
+import type { Slicers, DistanceBucket, ScoreState, FieldZone, PassDepth, PassDir, RunDir, ThreshKey } from './slicers'
+import { SCORE_LABELS, DISTANCE_LABELS, DEPTH_LABELS, PASSDIR_LABELS, RUNDIR_LABELS, ZONE_LABELS, THRESH_LABELS } from './slicers'
 
 const list = (xs: (string | number)[]) =>
   xs.map(x => (typeof x === 'number' ? x : `'${String(x).replace(/'/g, "''")}'`)).join(',')
@@ -72,6 +72,17 @@ const DEPTH: Record<PassDepth, string> = {
   d16to25: 'air_yards BETWEEN 16 AND 25',
   d26plus: 'air_yards >= 26',
 }
+// Run direction now combines run_location + run_gap into 7 buckets. Middle
+// runs typically have run_gap NULL, so match on location only for that bucket.
+const RUNDIR: Record<RunDir, string> = {
+  left_end:     "(run_location = 'left' AND run_gap = 'end')",
+  left_tackle:  "(run_location = 'left' AND run_gap = 'tackle')",
+  left_guard:   "(run_location = 'left' AND run_gap = 'guard')",
+  middle:       "(run_location = 'middle')",
+  right_guard:  "(run_location = 'right' AND run_gap = 'guard')",
+  right_tackle: "(run_location = 'right' AND run_gap = 'tackle')",
+  right_end:    "(run_location = 'right' AND run_gap = 'end')",
+}
 
 export function playsWhere(s: Slicers): string {
   let w = common(s)
@@ -94,7 +105,7 @@ export function playsWhere(s: Slicers): string {
   }
   if (s.passDepth.length) w += ` AND (${s.passDepth.map(d => DEPTH[d]).join(' OR ')})`
   if (s.passDir.length) w += ` AND pass_location IN (${list(s.passDir)})`
-  if (s.runDir.length) w += ` AND run_location IN (${list(s.runDir)})`
+  if (s.runDir.length) w += ` AND (${s.runDir.map(d => RUNDIR[d]).join(' OR ')})`
   if (s.twoMinute === 'yes') w += ` AND half_seconds_remaining <= 120`
   if (s.twoMinute === 'no') w += ` AND half_seconds_remaining > 120`
   // Home/away — plays carry home_team/away_team directly.
@@ -133,8 +144,8 @@ export function sliceLabel(s: Slicers): string {
   if (s.scoreStates.length) parts.push(s.scoreStates.map(x => SCORE_LABELS[x]).join('/'))
   if (s.zones.length) parts.push(s.zones.map(z => ZONE_LABELS[z]).join('/'))
   if (s.passDepth.length) parts.push(s.passDepth.map(d => DEPTH_LABELS[d]).join('/'))
-  if (s.passDir.length) parts.push(s.passDir.map(d => DIR_LABELS[d]).join('/') + ' pass')
-  if (s.runDir.length) parts.push(s.runDir.map(d => DIR_LABELS[d]).join('/') + ' run')
+  if (s.passDir.length) parts.push(s.passDir.map(d => PASSDIR_LABELS[d]).join('/') + ' pass')
+  if (s.runDir.length) parts.push(s.runDir.map(d => RUNDIR_LABELS[d]).join('/') + ' run')
   if (s.pressure !== 'all') parts.push(s.pressure === 'yes' ? 'under pressure' : 'clean pocket')
   ;(['passAtt','targets','rushAtt','rec'] as ThreshKey[]).forEach(k => {
     const [mn, mx] = s.thresholds[k]

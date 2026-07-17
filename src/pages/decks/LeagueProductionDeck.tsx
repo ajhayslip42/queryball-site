@@ -12,6 +12,8 @@ import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
 import { playsWhere, sliceLabel, thresholdHaving } from '@/lib/slicerSql'
 import { playerGameLog } from '@/lib/playerGameSql'
+import { PctBarTile, TreemapTile, PALETTE } from '@/components/charts/Charts'
+import { fmt } from '@/lib/nfl'
 
 type Pos = 'QB' | 'RB' | 'WR' | 'TE'
 const minG = (s: ReturnType<typeof useSlicers>['slicers']) => (s.weeks.length ? 1 : 3)
@@ -38,6 +40,7 @@ function prodDefs(pos: Pos): MDef[] {
     { key: 'car', label: 'Carries', expr: 'sum(carries)::int', f: 'int' },
     { key: 'rec', label: 'Receptions', expr: 'sum(receptions)::int', f: 'int' },
     { key: 'recy', label: 'Rec Yds', expr: 'sum(receiving_yards)::int', f: 'int' },
+    { key: 'opps', label: 'Opportunities', expr: '(sum(carries)+sum(targets))::int', f: 'int' },
     { key: 'ypc', label: 'Yds / Carry', expr: 'round(sum(rushing_yards)*1.0/nullif(sum(carries),0),2)', f: 'd2' },
     { key: 'scrim', label: 'Scrimmage Yds', expr: '(sum(rushing_yards)+sum(receiving_yards))::int', f: 'int' },
     { key: 'totfd', label: 'Total 1st Downs', expr: '(sum(rushing_first_downs)+sum(receiving_first_downs))::int', f: 'int' },
@@ -53,12 +56,13 @@ function prodDefs(pos: Pos): MDef[] {
     { key: 'ypr', label: 'Yds / Rec', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(receptions),0),1)', f: 'd1' },
     { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
     { key: 'ay', label: 'Air Yards', expr: 'sum(receiving_air_yards)::int', f: 'int' },
+    { key: 'ay_inc', label: 'AirY on Incomplete', expr: 'sum(receiving_air_yards_incomplete)::int', f: 'int' },
+    { key: 'yac', label: 'YAC', expr: 'sum(receiving_yards_after_catch)::int', f: 'int' },
     { key: 'g', label: 'Games', expr: 'count(*)', f: 'int' },
   ]
 }
 function rateDefs(pos: Pos): MDef[] {
   if (pos === 'QB') return [
-    { key: 'epa', label: 'EPA / Gm', expr: 'round(avg(passing_epa),3)', f: 'epa' },
     { key: 'ypa', label: 'Yds / Att', expr: 'round(sum(passing_yards)*1.0/nullif(sum(attempts),0),2)', f: 'd2' },
     { key: 'comp', label: 'Comp %', expr: 'round(sum(completions)*100.0/nullif(sum(attempts),0),1)', f: 'pct' },
     { key: 'tdpct', label: 'TD %', expr: 'round(sum(passing_tds)*100.0/nullif(sum(attempts),0),1)', f: 'pct' },
@@ -67,22 +71,22 @@ function rateDefs(pos: Pos): MDef[] {
     { key: 'adot', label: 'aDOT', expr: 'round(sum(passing_air_yards)*1.0/nullif(sum(attempts),0),1)', f: 'd1' },
     { key: 'yac', label: 'YAC / Comp', expr: 'round(sum(passing_yards_after_catch)*1.0/nullif(sum(completions),0),1)', f: 'd1' },
     { key: 'sackpct', label: 'Sack %', expr: 'round(sum(sacks)*100.0/nullif(sum(attempts)+sum(sacks),0),1)', f: 'pct' },
+    { key: 'ay_inc_att', label: 'AirY / Inc', expr: 'round(sum(passing_air_yards)*1.0/nullif(sum(attempts)-sum(completions),0),1)', f: 'd1' },
     { key: 'att', label: 'Attempts', expr: 'sum(attempts)::int', f: 'int' },
   ]
   if (pos === 'RB') return [
-    { key: 'epa', label: 'Rush EPA / Gm', expr: 'round(avg(rushing_epa),3)', f: 'epa' },
     { key: 'ypc', label: 'Yds / Carry', expr: 'round(sum(rushing_yards)*1.0/nullif(sum(carries),0),2)', f: 'd2' },
     { key: 'fdpc', label: '1st Down / Carry %', expr: 'round(sum(rushing_first_downs)*100.0/nullif(sum(carries),0),1)', f: 'pct' },
     { key: 'tdpc', label: 'TD / Carry %', expr: 'round(sum(rushing_tds)*100.0/nullif(sum(carries),0),1)', f: 'pct' },
     { key: 'ypr', label: 'Yds / Rec', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(receptions),0),1)', f: 'd1' },
     { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
-    { key: 'repa', label: 'Rec EPA / Gm', expr: 'round(avg(receiving_epa),3)', f: 'epa' },
     { key: 'ypt', label: 'Yds / Touch', expr: 'round((sum(rushing_yards)+sum(receiving_yards))*1.0/nullif(sum(carries)+sum(receptions),0),2)', f: 'd2' },
+    { key: 'opp_g', label: 'Opps / Gm', expr: 'round((sum(carries)+sum(targets))*1.0/nullif(count(distinct game_id),0),1)', f: 'd1' },
+    { key: 'fd_opp', label: '1st Down / Opp %', expr: 'round((sum(rushing_first_downs)+sum(receiving_first_downs))*100.0/nullif(sum(carries)+sum(targets),0),1)', f: 'pct' },
     { key: 'car', label: 'Carries', expr: 'sum(carries)::int', f: 'int' },
     { key: 'tgt', label: 'Targets', expr: 'sum(targets)::int', f: 'int' },
   ]
   return [
-    { key: 'epa', label: 'Rec EPA / Gm', expr: 'round(avg(receiving_epa),3)', f: 'epa' },
     { key: 'ypt', label: 'Yds / Target', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(targets),0),2)', f: 'd2' },
     { key: 'ypr', label: 'Yds / Rec', expr: 'round(sum(receiving_yards)*1.0/nullif(sum(receptions),0),1)', f: 'd1' },
     { key: 'catch', label: 'Catch %', expr: 'round(sum(receptions)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
@@ -90,8 +94,9 @@ function rateDefs(pos: Pos): MDef[] {
     { key: 'tdpt', label: 'TD / Tgt %', expr: 'round(sum(receiving_tds)*100.0/nullif(sum(targets),0),1)', f: 'pct' },
     { key: 'adot', label: 'aDOT', expr: 'round(sum(receiving_air_yards)*1.0/nullif(sum(targets),0),1)', f: 'd1' },
     { key: 'yac', label: 'YAC / Rec', expr: 'round(sum(receiving_yards_after_catch)*1.0/nullif(sum(receptions),0),1)', f: 'd1' },
+    { key: 'yac_pct', label: 'YAC %', expr: 'round(sum(receiving_yards_after_catch)*100.0/nullif(sum(receiving_yards),0),1)', f: 'pct' },
+    { key: 'ay_inc', label: 'AirY / Incompletion', expr: 'round(sum(receiving_air_yards_incomplete)*1.0/nullif(sum(incompletions),0),1)', f: 'd1' },
     { key: 'tgt', label: 'Targets', expr: 'sum(targets)::int', f: 'int' },
-    { key: 'rec', label: 'Receptions', expr: 'sum(receptions)::int', f: 'int' },
   ]
 }
 /* Volume & Usage — bespoke. Target/air-yards share & WOPR are computed via a
@@ -241,36 +246,155 @@ function Situational() {
 }
 
 /* Report #6 — Weekly league trends (category = week) */
-function weeklyDefs(pos: Pos): MDef[] {
-  const yd = pos === 'QB' ? 'passing_yards' : pos === 'RB' ? 'rushing_yards' : 'receiving_yards'
-  const td = pos === 'QB' ? 'passing_tds' : pos === 'RB' ? 'rushing_tds' : 'receiving_tds'
-  const fd = pos === 'QB' ? 'passing_first_downs' : pos === 'RB' ? 'rushing_first_downs' : 'receiving_first_downs'
+/* ============================================================================
+ * NEW: EMERGING PRODUCERS
+ * Players whose most-recent 4 games meaningfully outpace their prior baseline.
+ * For each position, sort by the delta (last-4-avg minus prior-avg) in the
+ * position's headline volume metric.
+ * ========================================================================== */
+function EmergingProducers() {
+  const { slicers } = useSlicers(); const pos = usePos()
   const vol = pos === 'QB' ? 'attempts' : pos === 'RB' ? 'carries' : 'targets'
+  const yd  = pos === 'QB' ? 'passing_yards' : pos === 'RB' ? 'rushing_yards' : 'receiving_yards'
   const volLabel = pos === 'QB' ? 'Attempts' : pos === 'RB' ? 'Carries' : 'Targets'
-  const bigThresh = pos === 'QB' ? 300 : 100
-  return [
-    { key: 'yds', label: `League ${pos} Yds`, expr: `sum(${yd})::int`, f: 'int' },
-    { key: 'tds', label: 'Total TDs', expr: `sum(${td})::int`, f: 'int' },
-    { key: 'fds', label: 'Total 1st Downs', expr: `sum(${fd})::int`, f: 'int' },
-    { key: 'vol', label: volLabel, expr: `sum(${vol})::int`, f: 'int' },
-    { key: 'fpts', label: 'EPA (total)', expr: `round(sum(${pos === 'QB' ? 'passing_epa' : pos === 'RB' ? 'rushing_epa' : 'receiving_epa'}),1)`, f: 'd1' },
-    { key: 'np', label: 'Players', expr: 'count(distinct player_id)', f: 'int' },
-    { key: 'ppg', label: 'TDs / Player', expr: `round(sum(${td})*1.0/nullif(count(distinct player_id),0),2)`, f: 'd2' },
-    { key: 'ypp', label: 'Yds / Player', expr: `round(sum(${yd})*1.0/nullif(count(distinct player_id),0),1)`, f: 'd1' },
-    { key: 'big', label: `${bigThresh}+ Yd Games`, expr: `count(*) FILTER(WHERE ${yd}>=${bigThresh})`, f: 'int' },
-    { key: 'rows', label: 'Player-Games', expr: 'count(*)', f: 'int' },
-  ]
-}
-function Weekly() {
-  const { slicers } = useSlicers(); const pos = usePos(); const defs = weeklyDefs(pos)
-  const sql = `SELECT week AS cat, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}'
-    GROUP BY cat ORDER BY week`
+  const ydLabel = pos === 'QB' ? 'Pass Yds' : pos === 'RB' ? 'Rush Yds' : 'Rec Yds'
+  // For each player: split games into last-4 vs prior by row_number over
+  // player-week rows sorted desc by season/week; compare averages.
+  const sql = `
+    WITH gl AS (
+      SELECT player_id, player_display_name nm, recent_team tm, season, week, ${vol} v, ${yd} y
+      FROM ${playerGameLog(slicers)} g WHERE g."position" = '${pos}'
+    ),
+    ranked AS (
+      SELECT *, row_number() OVER (PARTITION BY player_id ORDER BY season DESC, week DESC) rn,
+             count(*) OVER (PARTITION BY player_id) gp
+      FROM gl
+    )
+    SELECT nm, max(tm) tm,
+      max(gp) gp,
+      round(avg(v) FILTER (WHERE rn <= 4), 1) v_recent,
+      round(avg(v) FILTER (WHERE rn >  4), 1) v_prior,
+      round(avg(y) FILTER (WHERE rn <= 4), 1) y_recent,
+      round(avg(y) FILTER (WHERE rn >  4), 1) y_prior,
+      round(avg(v) FILTER (WHERE rn <= 4) - avg(v) FILTER (WHERE rn > 4), 1) v_delta,
+      round(avg(y) FILTER (WHERE rn <= 4) - avg(y) FILTER (WHERE rn > 4), 1) y_delta
+    FROM ranked
+    GROUP BY nm HAVING max(gp) >= 6 AND avg(v) FILTER (WHERE rn <= 4) >= 2
+    ORDER BY v_delta DESC NULLS LAST LIMIT 20`
   const q = useQuery<any>(sql, [sql])
-  const cols: Column<any>[] = [{ key: 'cat', label: 'Week' }, ...defs.map(d => ({ key: d.key, label: d.label, numeric: true, format: F[d.f] }))]
-  const lineMetrics = metricsOf(defs).map(m => ({ ...m, type: 'line' as const }))
-  return <MetricReport loading={q.loading} title="Weekly league trends" subtitle={`${pos} · league totals by week · ${sliceLabel(slicers)}`}
-    mini={{ rows: q.data ?? [], cols, sort: { key: 'cat', dir: 'asc' }, caption: 'Week by week' }}
-    panels={[{ rows: q.data ?? [], categoryKey: 'cat', metrics: lineMetrics }]} />
+  const cols: Column<any>[] = [
+    { key: 'nm', label: 'Player' }, { key: 'tm', label: 'Tm' }, { key: 'gp', label: 'GP', numeric: true },
+    { key: 'v_recent', label: `${volLabel} (L4)`, numeric: true, format: F.d1 },
+    { key: 'v_prior', label: `${volLabel} (prior)`, numeric: true, format: F.d1 },
+    { key: 'v_delta', label: 'Δ Volume', numeric: true, format: F.d1 },
+    { key: 'y_recent', label: `${ydLabel} (L4)`, numeric: true, format: F.d1 },
+    { key: 'y_prior', label: `${ydLabel} (prior)`, numeric: true, format: F.d1 },
+    { key: 'y_delta', label: `Δ ${ydLabel}`, numeric: true, format: F.d1 },
+  ]
+  return <MetricReport loading={q.loading} title="Emerging producers"
+    subtitle={`${pos} · last-4 vs season-to-date · ${sliceLabel(slicers)} · players heating up`}
+    mini={{ rows: q.data ?? [], cols, sort: { key: 'v_delta', dir: 'desc' }, caption: 'Sorted by volume delta' }}
+    panels={[]} />
+}
+
+/* ============================================================================
+ * NEW: POSITION × TEAM
+ * For each team, the breakdown of production/volume by position. Shows both
+ * league-total and team-by-team splits.
+ * ========================================================================== */
+function PositionByTeam() {
+  const { slicers } = useSlicers()
+  const sql = `SELECT recent_team tm, "position" pos,
+      sum(attempts+carries+targets)::int touches,
+      sum(passing_yards+rushing_yards+receiving_yards)::int yds,
+      sum(passing_tds+rushing_tds+receiving_tds)::int tds,
+      sum(passing_first_downs+rushing_first_downs+receiving_first_downs)::int fds
+    FROM ${playerGameLog(slicers)} g
+    WHERE "position" IN ('QB','RB','WR','TE')
+    GROUP BY recent_team, "position"
+    ORDER BY recent_team, "position"`
+  const q = useQuery<any>(sql, [sql])
+  const rows = q.data ?? []
+  // Aggregate to leaguewide totals per position for the top summary.
+  const leagueByPos = ['QB','RB','WR','TE'].map(p => {
+    const acc = rows.filter(r => r.pos === p).reduce((s, r) => ({
+      touches: s.touches + (r.touches || 0),
+      yds: s.yds + (r.yds || 0),
+      tds: s.tds + (r.tds || 0),
+    }), { touches: 0, yds: 0, tds: 0 })
+    return { name: p, ...acc, value: acc.yds }
+  })
+  // Per-team stacked bars (yards by position)
+  const teams = [...new Set(rows.map(r => r.tm))].sort()
+  const pivot = teams.map(tm => {
+    const row: any = { name: tm }; let tot = 0
+    ;['QB','RB','WR','TE'].forEach(p => {
+      const rec = rows.find(r => r.tm === tm && r.pos === p)
+      row[p] = rec?.yds ?? 0; tot += row[p]
+    })
+    row._tot = tot
+    return row
+  }).sort((a, b) => b._tot - a._tot)
+  const colors = [PALETTE.accent2, PALETTE.ok, PALETTE.accent, PALETTE.bad]
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="font-display text-lg tracking-tight">Position × Team</h3>
+        <p className="text-[11.5px] text-muted mt-0.5">Positional distribution of production, both leaguewide and per team · {sliceLabel(slicers)}</p>
+      </div>
+      {/* Leaguewide */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="rounded border border-line bg-paper p-3">
+          <p className="eyebrow mb-2">League-wide yards by position</p>
+          <PctBarTile data={leagueByPos} height={40} />
+          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+            {leagueByPos.map((r, i) => (
+              <div key={r.name} className="rounded bg-cream p-2">
+                <p className="text-[11px] font-semibold text-ink">{r.name}</p>
+                <p className="text-[10px] text-muted num mt-0.5">{fmt.int(r.yds)} yds</p>
+                <p className="text-[10px] text-muted num">{r.tds} TDs</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded border border-line bg-paper p-3">
+          <p className="eyebrow mb-2">League touches by position</p>
+          <TreemapTile data={leagueByPos.map(r => ({ name: r.name, value: r.touches }))} height={220} />
+        </div>
+      </div>
+      {/* Per team */}
+      <div className="rounded border border-line bg-paper p-3">
+        <p className="eyebrow mb-2">Yards by position, per team (sorted by total)</p>
+        <div className="grid grid-cols-1 gap-1.5" style={{ maxHeight: 560, overflowY: 'auto' }}>
+          {pivot.map(row => (
+            <div key={row.name} className="flex items-center gap-2">
+              <span className="w-10 text-[11px] font-mono text-muted flex-shrink-0">{row.name}</span>
+              <div className="flex-1 flex h-4 rounded overflow-hidden border border-line">
+                {['QB','RB','WR','TE'].map((p, i) => {
+                  const v = row[p]; const pct = row._tot ? v / row._tot * 100 : 0
+                  if (pct === 0) return null
+                  return <div key={p} title={`${p}: ${v} (${pct.toFixed(1)}%)`}
+                    className="text-[9px] font-semibold text-white flex items-center justify-center"
+                    style={{ background: colors[i], width: `${pct}%` }}>
+                    {pct >= 15 ? p : ''}
+                  </div>
+                })}
+              </div>
+              <span className="w-16 text-right text-[10.5px] text-muted num flex-shrink-0">{fmt.int(row._tot)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex gap-3 justify-end">
+          {['QB','RB','WR','TE'].map((p, i) => (
+            <span key={p} className="inline-flex items-center gap-1 text-[9.5px]">
+              <span className="inline-block h-2 w-2 rounded-sm" style={{ background: colors[i] }} />{p}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function LeagueProductionDeck() {
@@ -280,12 +404,13 @@ export default function LeagueProductionDeck() {
     { id: 'efficiency',  label: 'Efficiency Leaders',   render: () => <PlayerReport kind="rate" /> },
     { id: 'usage',       label: 'Volume & Usage',       render: () => <Usage /> },
     { id: 'situational', label: 'Situational Splits',   render: () => <Situational /> },
-    { id: 'weekly',      label: 'Weekly Trends',        render: () => <Weekly /> },
+    { id: 'emerging',    label: 'Emerging Producers',   render: () => <EmergingProducers /> },
+    { id: 'positiontm',  label: 'Position × Team',      render: () => <PositionByTeam /> },
     { id: 'fantasy',     label: 'Fantasy Leaders',      fantasy: true, render: () => <PlayerReport kind="fantasy" /> },
   ]
   return (
     <DeckShell title="League Production" deckIndex={6}
-      intro="Cross-league leaderboards, sliced honestly. Filter by position to compare like-for-like — production, efficiency, usage, situational splits, weekly trends and fantasy — all the way down to whatever slice of the season matters. First downs run throughout; the situational report is play-by-play, so down, distance, score and field position all bite."
+      intro="Cross-league leaderboards, sliced honestly. Filter by position to compare like-for-like — production, efficiency, usage, situational splits, and who's heating up. Situational and emerging reports read from play-by-play, so down, distance, score and field position all bite."
       tabs={tabs}
       slicerGroups={['season','week','position','team','opponent','homeAway','down','distance','score','zone','qtr','passDepth','runDir','pressure','shotgun','playType','threshold']} />
   )

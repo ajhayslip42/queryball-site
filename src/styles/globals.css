@@ -42,6 +42,8 @@
      ITERATION 3 — FILTER PANEL: visually differentiated
      ================================================================= */
   .filter-rail {
+    width: 320px;
+    max-width: 100%;
     background: linear-gradient(180deg, #EEF3F6 0%, #E6EDF1 100%);
     border: 1px solid #D5DFE5;
     border-radius: 0.85rem;
@@ -61,16 +63,38 @@
     background: rgba(42,59,71,0.04);
     border-bottom: 1px solid #D5DFE5;
   }
+  /* Collapsed rail: thin vertical strip with an expand button. Keeps the panel
+   * out of the way when the user wants more canvas for charts. */
+  .filter-rail-collapsed {
+    width: 40px;
+    background: linear-gradient(180deg, #EEF3F6 0%, #E6EDF1 100%);
+    border: 1px solid #D5DFE5;
+    border-radius: 0.85rem;
+    box-shadow: inset 0 0 0 1px rgba(42,59,71,0.04), 0 1px 2px rgba(31,45,56,0.04);
+    position: relative;
+    overflow: hidden;
+    min-height: 320px;
+  }
+  .filter-rail-collapsed::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0; width: 4px;
+    background: linear-gradient(180deg, #6191A5 0%, #2A3B47 100%);
+  }
+  /* Make sure the drawer overlay always beats recharts (svgs sometimes render
+   * above local z-stacks). */
+  .qb-drawer-scrim { z-index: 60; }
+  .qb-drawer       { z-index: 61; }
 
   /* =================================================================
-     ITERATION 3 — TABS: dramatically more prominent
+     TABS: high-prominence report navigation row
      ================================================================= */
   .tab-strip {
-    background: #FFFFFF;
-    border: 1px solid #E2E6EA;
+    background: linear-gradient(180deg, #F4F7F9 0%, #E7EEF2 100%);
+    border: 1px solid #C6D2DA;
     border-radius: 999px;
-    padding: 5px;
-    box-shadow: 0 1px 0 rgba(31,45,56,0.04), 0 1px 2px rgba(31,45,56,0.05);
+    padding: 6px;
+    box-shadow: 0 2px 4px rgba(31,45,56,0.05), 0 1px 0 rgba(255,255,255,0.6) inset;
     display: inline-flex;
     gap: 4px;
   }
@@ -78,7 +102,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 18px;
+    padding: 9px 16px;
     border-radius: 999px;
     font-size: 13px;
     font-weight: 600;
@@ -91,27 +115,13 @@
     position: relative;
   }
   .tab-pill:hover {
-    background: #EEF3F6;
+    background: rgba(255,255,255,0.7);
     color: #1F2D38;
-  }
-  .tab-pill .tab-num {
-    font-family: "JetBrains Mono", ui-monospace, monospace;
-    font-size: 10px;
-    background: rgba(42,59,71,0.08);
-    color: #5E6B75;
-    padding: 2px 6px;
-    border-radius: 999px;
-    font-weight: 500;
-    transition: all 160ms cubic-bezier(0.2, 0, 0, 1);
   }
   .tab-pill.active {
     background: linear-gradient(180deg, #6191A5 0%, #547F92 100%);
     color: #FFFFFF;
     box-shadow: 0 4px 14px -4px rgba(97,145,165,0.55), 0 2px 6px -2px rgba(42,59,71,0.20);
-  }
-  .tab-pill.active .tab-num {
-    background: rgba(255,255,255,0.20);
-    color: #FFFFFF;
   }
   /* Fantasy tab gets distinct treatment */
   .tab-pill.fantasy { color: #2A3B47; }
@@ -248,6 +258,9 @@
   }
   .qb-table tr:last-child td { border-bottom: none; }
   .qb-table tr:hover td { background: rgba(97,145,165,0.04); }
+  /* Zebra: alternating light row shading, applied only when the caller opts in. */
+  .qb-zebra tbody tr:nth-child(even) td { background: rgba(97,145,165,0.03); }
+  .qb-zebra tbody tr:nth-child(even):hover td { background: rgba(97,145,165,0.07); }
 
   .num { font-variant-numeric: tabular-nums; }
 

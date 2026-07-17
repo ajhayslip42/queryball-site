@@ -17,7 +17,13 @@ export type FieldZone = 'own1to20' | 'own21to50' | 'opp49to21' | 'redzone' | 'go
 export type Quarter = '1' | '2' | '3' | '4' | 'OT'
 export type DistanceBucket = 'd1' | 'd2to3' | 'd4to6' | 'd7to9' | 'd10' | 'd11plus'
 export type PassDepth = 'behindLOS' | 'd1to5' | 'd6to10' | 'd11to15' | 'd16to25' | 'd26plus'
-export type Direction = 'left' | 'middle' | 'right'
+export type PassDir = 'left' | 'middle' | 'right'
+export type RunDir =
+  | 'left_end' | 'left_tackle' | 'left_guard'
+  | 'middle'
+  | 'right_guard' | 'right_tackle' | 'right_end'
+// Kept as an alias for any legacy references; new code uses PassDir/RunDir.
+export type Direction = PassDir
 
 // Usage thresholds — filter players by season totals (applied as HAVING on
 // player-level aggregations). Each is [min, max]; null means no bound.
@@ -63,10 +69,10 @@ export type Slicers = {
 
   // Pass depth + direction (applies to any plays-based view)
   passDepth: PassDepth[]
-  passDir: Direction[]
+  passDir: PassDir[]
 
-  // Run direction
-  runDir: Direction[]
+  // Run direction (combined location + gap: 7 buckets)
+  runDir: RunDir[]
 
   // Pass detail
   pressure: Tri
@@ -126,7 +132,14 @@ export const SCORE_LABELS: Record<ScoreState, string> = {
 export const DEPTH_LABELS: Record<PassDepth, string> = {
   behindLOS: 'Behind LOS', d1to5: '1–5', d6to10: '6–10', d11to15: '11–15', d16to25: '16–25', d26plus: '26+',
 }
-export const DIR_LABELS: Record<Direction, string> = { left: 'Left', middle: 'Middle', right: 'Right' }
+export const PASSDIR_LABELS: Record<PassDir, string> = { left: 'Left', middle: 'Middle', right: 'Right' }
+export const RUNDIR_LABELS: Record<RunDir, string> = {
+  left_end: 'Left End', left_tackle: 'Left Tackle', left_guard: 'Left Guard',
+  middle: 'Middle',
+  right_guard: 'Right Guard', right_tackle: 'Right Tackle', right_end: 'Right End',
+}
+// legacy
+export const DIR_LABELS = PASSDIR_LABELS
 
 // ---------------------------------------------------------------
 // URL <-> Slicers serialization
@@ -208,8 +221,8 @@ function decodeFromParams(p: URLSearchParams): Slicers {
     noHuddle: (p.get('nh') as Tri) || 'all',
     playTypes: decList(p.get('pt'), String) as Slicers['playTypes'],
     passDepth: decList(p.get('pd'), String) as PassDepth[],
-    passDir: decList(p.get('pdir'), String) as Direction[],
-    runDir: decList(p.get('rdir'), String) as Direction[],
+    passDir: decList(p.get('pdir'), String) as PassDir[],
+    runDir: decList(p.get('rdir'), String) as RunDir[],
     pressure: (p.get('prs') as Tri) || 'all',
     thresholds: {
       passAtt: decThresh(p.get('thpa')),

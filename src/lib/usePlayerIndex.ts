@@ -9,24 +9,29 @@ import { useMemo } from 'react'
 import { useQuery } from './useQuery'
 import type { Player, Position } from './players'
 
-// Latest team/position for each skill player who has weekly stats.
+// Latest team/position for each skill player who has weekly stats. Also joins
+// the players.parquet to pull in the headshot URL (nfl.com CDN).
 const INDEX_SQL = `
-  SELECT gsis_id, name, position, team FROM (
-    SELECT player_id AS gsis_id, player_display_name AS name, position,
-      recent_team AS team,
-      row_number() OVER (PARTITION BY player_id ORDER BY season DESC, week DESC) AS rn
-    FROM player_week
-    WHERE position IN ('QB','RB','WR','TE') AND player_display_name IS NOT NULL
-  ) WHERE rn = 1
-  ORDER BY name
+  SELECT pw.gsis_id, pw.name, pw.position, pw.team, pl.headshot
+  FROM (
+    SELECT gsis_id, name, position, team FROM (
+      SELECT player_id AS gsis_id, player_display_name AS name, position,
+        recent_team AS team,
+        row_number() OVER (PARTITION BY player_id ORDER BY season DESC, week DESC) AS rn
+      FROM player_week
+      WHERE position IN ('QB','RB','WR','TE') AND player_display_name IS NOT NULL
+    ) WHERE rn = 1
+  ) pw
+  LEFT JOIN players pl ON pl.gsis_id = pw.gsis_id
+  ORDER BY pw.name
 `
 
-type Row = { gsis_id: string; name: string; position: string; team: string }
+type Row = { gsis_id: string; name: string; position: string; team: string; headshot: string | null }
 
 export function usePlayerIndex() {
   const { data, loading } = useQuery<Row>(INDEX_SQL, [])
   const players = useMemo<Player[]>(
-    () => (data ?? []).map(r => ({ gsis_id: r.gsis_id, name: r.name, position: r.position as Position, team: r.team })),
+    () => (data ?? []).map(r => ({ gsis_id: r.gsis_id, name: r.name, position: r.position as Position, team: r.team, headshot: r.headshot ?? undefined })),
     [data],
   )
   const byId = useMemo(() => new Map(players.map(p => [p.gsis_id, p])), [players])

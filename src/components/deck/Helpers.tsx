@@ -84,13 +84,27 @@ export function NoData({ note }: { note?: string }) {
   )
 }
 
-/** Wraps a query result: shows a loader, then a no-data state, then children. */
-export function QueryState<T>({ q, height, children }: {
-  q: { data: T[] | null; loading: boolean }
-  height?: number
-  children: (rows: T[]) => ReactNode
-}) {
-  if (q.loading || q.data == null) return <TileLoader height={height} />
-  if (q.data.length === 0) return <NoData />
-  return <>{children(q.data)}</>
+/** Wraps a query result: shows a loader, then a no-data state, then children.
+ *
+ * Supports two call shapes:
+ *   1. Query wrapper — pass `{ q, children }`. Children receives the row array.
+ *   2. Inline pattern — pass `{ loading, rows, children? }`. If children is a
+ *      React node it renders as the "ready" content; otherwise a plain loader
+ *      or empty placeholder is shown. This is used inside custom Overview
+ *      cards that already have their own render logic.
+ */
+export function QueryState<T>(props:
+  | { q: { data: T[] | null; loading: boolean }; height?: number; children: (rows: T[]) => ReactNode }
+  | { loading: boolean; rows: T[] | null | undefined; height?: number; children?: ReactNode }
+) {
+  if ('q' in props) {
+    const { q, height, children } = props
+    if (q.loading || q.data == null) return <TileLoader height={height} />
+    if (q.data.length === 0) return <NoData />
+    return <>{children(q.data)}</>
+  }
+  const { loading, rows, height, children } = props
+  if (loading || rows == null) return <TileLoader height={height} />
+  if (rows.length === 0) return <NoData />
+  return <>{children}</>
 }

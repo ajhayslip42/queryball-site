@@ -59,20 +59,13 @@ export default function DeckShell({
           )}
         </div>
 
-        {/* Report-count banner */}
-        <div className="mb-3 flex items-center justify-between flex-wrap gap-3">
-          <div className="deck-banner">
-            <span className="deck-banner-count">{tabs.length} reports</span>
-            <span>in this deck</span>
-            <span className="deck-banner-arrow">→</span>
-            <span className="text-muted2">switch tabs below</span>
-          </div>
-        </div>
+        {/* Reports label — the tab bar itself carries the visual weight; no counter banner. */}
+        <p className="eyebrow mb-2">Reports</p>
 
-        {/* Tab strip — iteration 3 pill design */}
-        <div className="mb-7 overflow-x-auto no-scrollbar">
+        {/* Tab strip — dramatically more prominent than before; no numeric prefixes. */}
+        <div className="mb-6 overflow-x-auto no-scrollbar">
           <div className="tab-strip" role="tablist">
-            {tabs.map((t, i) => (
+            {tabs.map(t => (
               <button
                 key={t.id}
                 role="tab"
@@ -80,21 +73,19 @@ export default function DeckShell({
                 onClick={() => setActiveId(t.id)}
                 className={clsx('tab-pill', t.fantasy && 'fantasy', t.id === activeId && 'active')}
               >
-                <span className="tab-num">{String(i + 1).padStart(2, '0')}</span>
                 {t.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Layout: filter rail + content */}
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 lg:col-span-3">
-            <div className="sticky top-20">
-              <SlicerPanel groups={slicerGroups} showPlayerPicker={showPlayerPicker} />
-            </div>
+        {/* Layout: filter rail + content. Flex so the content column expands
+         *   naturally when the rail collapses to its skinny state. */}
+        <div className="flex flex-col lg:flex-row gap-5">
+          <div className="lg:sticky lg:top-20 lg:self-start lg:flex-shrink-0">
+            <SlicerPanel groups={slicerGroups} showPlayerPicker={showPlayerPicker} />
           </div>
-          <div className="col-span-12 lg:col-span-9 min-w-0">
+          <div className="flex-1 min-w-0">
             <ActiveSlicerBadges />
             <div key={active.id} className="fade-in">
               {active.render()}
