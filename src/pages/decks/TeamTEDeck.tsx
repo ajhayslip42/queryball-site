@@ -1,5 +1,6 @@
-import TeamPositionDeck from './TeamPositionDeck'
+// Legacy route wrapper: /decks/team-te now points at the combined
+// Pass Catchers deck, preloaded to the TE-only toggle. Bookmarks still work.
+import TeamPassCatchersDeck from './TeamPassCatchersDeck'
 export default function TeamTEDeck() {
-  return <TeamPositionDeck position="TE" deckIndex={5} title="Team — Tight Ends"
-    intro="How each team uses its tight ends — target share, receiving production, and the room's distribution. Pick a team in the rail to drill in." />
+  return <TeamPassCatchersDeck initialFilter="TE" />
 }

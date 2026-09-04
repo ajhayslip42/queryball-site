@@ -29,17 +29,17 @@ const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1)
 const PLAYOFF_WEEKS = [19, 20, 21, 22]
 
 /* -------------------- atoms -------------------- */
-function GroupSection({ title, defaultOpen = true, children }:
-  { title: string; defaultOpen?: boolean; children: ReactNode }) {
+function GroupSection({ title, defaultOpen = true, priority = false, children }:
+  { title: string; defaultOpen?: boolean; priority?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div>
+    <div className={priority ? 'group-priority' : undefined}>
       <button type="button" onClick={() => setOpen(o => !o)}
         className="flex w-full items-center justify-between text-left mb-2">
         <span className="group-label">{title}</span>
         <ChevronDown className={clsx('h-3.5 w-3.5 text-muted transition-transform', open && 'rotate-180')} />
       </button>
-      {open && <div className="mb-5">{children}</div>}
+      {open && <div className={priority ? '' : 'mb-5'}>{children}</div>}
     </div>
   )
 }
@@ -135,6 +135,19 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
         <div className="px-5 py-5 space-y-5">
           {showPlayerPicker && (<><PlayerPicker /><div className="border-b border-railedge -mx-5" /></>)}
 
+          {/* PROMOTED: Team filter is the most-used slicer on nearly every deck.
+           * Rendered first with priority styling so it's immediately obvious. */}
+          {showGroup('team') && (
+            <GroupSection title="Team" defaultOpen priority>
+              <div className="grid grid-cols-4 gap-1">
+                {TEAMS.map(t => (
+                  <button key={t} type="button" onClick={() => toggle('teams', t)}
+                    className={clsx('chip justify-center text-[10px]', slicers.teams.includes(t) && 'applied')}>{t}</button>
+                ))}
+              </div>
+            </GroupSection>
+          )}
+
           {showGroup('season') && (
             <GroupSection title="Season">
               <div className="flex flex-wrap gap-1">
@@ -169,17 +182,6 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
               <div className="flex flex-wrap gap-1">
                 {POSITIONS.map(p => (
                   <Chip key={p} active={slicers.positions.includes(p)} onClick={() => toggle('positions', p)}>{p}</Chip>
-                ))}
-              </div>
-            </GroupSection>
-          )}
-
-          {showGroup('team') && (
-            <GroupSection title="Team" defaultOpen={false}>
-              <div className="grid grid-cols-4 gap-1">
-                {TEAMS.map(t => (
-                  <button key={t} type="button" onClick={() => toggle('teams', t)}
-                    className={clsx('chip justify-center text-[10px]', slicers.teams.includes(t) && 'applied')}>{t}</button>
                 ))}
               </div>
             </GroupSection>

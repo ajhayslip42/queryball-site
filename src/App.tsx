@@ -12,6 +12,7 @@ import TeamQBDeck          from '@/pages/decks/TeamQBDeck'
 import TeamRBDeck          from '@/pages/decks/TeamRBDeck'
 import TeamWRDeck          from '@/pages/decks/TeamWRDeck'
 import TeamTEDeck          from '@/pages/decks/TeamTEDeck'
+import TeamPassCatchersDeck from '@/pages/decks/TeamPassCatchersDeck'
 import LeagueProductionDeck from '@/pages/decks/LeagueProductionDeck'
 import TeamDefenseDeck     from '@/pages/decks/TeamDefenseDeck'
 import TeamTendenciesDeck  from '@/pages/decks/TeamTendenciesDeck'
@@ -27,6 +28,10 @@ export default function App() {
           <Route path="/decks/single-player"     element={<SinglePlayerDeck />} />
           <Route path="/decks/team-qb"           element={<TeamQBDeck />} />
           <Route path="/decks/team-rb"           element={<TeamRBDeck />} />
+          {/* Combined WR+TE deck. /team-wr and /team-te are legacy aliases
+           * kept for existing bookmarks; both open the combined deck preloaded
+           * to their respective toggle. */}
+          <Route path="/decks/team-passcatchers" element={<TeamPassCatchersDeck />} />
           <Route path="/decks/team-wr"           element={<TeamWRDeck />} />
           <Route path="/decks/team-te"           element={<TeamTEDeck />} />
           <Route path="/decks/league-production" element={<LeagueProductionDeck />} />

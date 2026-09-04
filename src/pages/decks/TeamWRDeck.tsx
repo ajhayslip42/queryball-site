@@ -1,5 +1,6 @@
-import TeamPositionDeck from './TeamPositionDeck'
+// Legacy route wrapper: /decks/team-wr now points at the combined
+// Pass Catchers deck, preloaded to the WR-only toggle. Bookmarks still work.
+import TeamPassCatchersDeck from './TeamPassCatchersDeck'
 export default function TeamWRDeck() {
-  return <TeamPositionDeck position="WR" deckIndex={4} title="Team — Wide Receivers"
-    intro="How each offense feeds its receivers — target distribution, receiving production, and how the room's volume splits across players." />
+  return <TeamPassCatchersDeck initialFilter="WR" />
 }

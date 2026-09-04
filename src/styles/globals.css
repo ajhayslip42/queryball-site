@@ -237,6 +237,32 @@
     color: #5E6B75;
   }
 
+  /* PROMOTED filter group — subtle steel-tinted card so the most-used filter
+   * (Team, or Player picker) reads as the primary control in the rail without
+   * shouting. Left accent bar echoes the .filter-rail accent for cohesion. */
+  .group-priority {
+    background: linear-gradient(180deg, rgba(97,145,165,0.14) 0%, rgba(97,145,165,0.06) 100%);
+    border: 1px solid rgba(97,145,165,0.35);
+    border-left: 3px solid #2A3B47;
+    border-radius: 0.5rem;
+    padding: 10px 12px 12px 12px;
+    margin: -2px 0 4px 0;
+  }
+  .group-priority .group-label {
+    color: #2A3B47;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+  }
+  .group-priority .chip {
+    background: #FFFFFF;
+    border-color: rgba(42,59,71,0.20);
+  }
+  .group-priority .chip.applied {
+    background: #2A3B47;
+    color: #FFFFFF;
+    border-color: #2A3B47;
+  }
+
   /* Data tables */
   .qb-table { border-collapse: collapse; width: 100%; }
   .qb-table th {

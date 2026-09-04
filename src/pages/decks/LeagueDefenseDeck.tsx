@@ -103,14 +103,16 @@ const SETS: Record<string, { title: string; sub: string; base: string; defs: MDe
     defs: [
       { key: 'third', label: '3rd Conv % allowed', expr: 'round(sum(first_down) FILTER(WHERE down=3)*100.0/nullif(count(*) FILTER(WHERE down=3),0),1)', f: 'pct' },
       { key: 'fourth', label: '4th Conv % allowed', expr: 'round(sum(first_down) FILTER(WHERE down=4)*100.0/nullif(count(*) FILTER(WHERE down=4),0),1)', f: 'pct' },
-      { key: 'rztd', label: 'RZ TD % allowed', expr: 'round((sum(pass_touchdown)+sum(rush_touchdown)) FILTER(WHERE yardline_100<=20)*100.0/nullif(count(*) FILTER(WHERE yardline_100<=20),0),1)', f: 'pct' },
-      { key: 'gltd', label: 'Goal-Line TD %', expr: 'round((sum(pass_touchdown)+sum(rush_touchdown)) FILTER(WHERE yardline_100<=5)*100.0/nullif(count(*) FILTER(WHERE yardline_100<=5),0),1)', f: 'pct' },
+      // FIX: (sum(x)+sum(y)) FILTER (WHERE ...) is invalid SQL — FILTER attaches
+      // to a single aggregate, not to an arithmetic expression. Distribute it.
+      { key: 'rztd', label: 'RZ TD % allowed', expr: 'round((sum(pass_touchdown) FILTER(WHERE yardline_100<=20)+sum(rush_touchdown) FILTER(WHERE yardline_100<=20))*100.0/nullif(count(*) FILTER(WHERE yardline_100<=20),0),1)', f: 'pct' },
+      { key: 'gltd', label: 'Goal-Line TD %', expr: 'round((sum(pass_touchdown) FILTER(WHERE yardline_100<=5)+sum(rush_touchdown) FILTER(WHERE yardline_100<=5))*100.0/nullif(count(*) FILTER(WHERE yardline_100<=5),0),1)', f: 'pct' },
       { key: 'short', label: 'Short-Yd Conv %', expr: 'round(sum(first_down) FILTER(WHERE ydstogo<=2)*100.0/nullif(count(*) FILTER(WHERE ydstogo<=2),0),1)', f: 'pct' },
       { key: 'fd3', label: '3rd 1D allowed', expr: 'sum(first_down) FILTER(WHERE down=3)', f: 'int' },
       { key: 'rzn', label: 'RZ Plays faced', expr: 'count(*) FILTER(WHERE yardline_100<=20)', f: 'int' },
       { key: 'n3', label: '3rd Down Plays', expr: 'count(*) FILTER(WHERE down=3)', f: 'int' },
       { key: 'twom', label: '2-Min Yds allowed', expr: 'sum(COALESCE(passing_yards,0)+COALESCE(rushing_yards,0)) FILTER(WHERE half_seconds_remaining<=120)', f: 'int' },
-      { key: 'twomTD', label: '2-Min TDs allowed', expr: '(sum(pass_touchdown)+sum(rush_touchdown)) FILTER(WHERE half_seconds_remaining<=120)', f: 'int' },
+      { key: 'twomTD', label: '2-Min TDs allowed', expr: '(sum(pass_touchdown) FILTER(WHERE half_seconds_remaining<=120)+sum(rush_touchdown) FILTER(WHERE half_seconds_remaining<=120))', f: 'int' },
     ]
   },
 }

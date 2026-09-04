@@ -26,7 +26,7 @@ export type SlicerGroup = Parameters<typeof SlicerPanel>[0]['groups'][number]
 
 export default function DeckShell({
   title, intro, tabs, slicerGroups, deckIndex,
-  currentSubject, showPlayerPicker = false,
+  currentSubject, showPlayerPicker = false, prefixContent,
 }: {
   title: string
   intro: ReactNode
@@ -35,6 +35,9 @@ export default function DeckShell({
   deckIndex: number
   currentSubject?: { label: string; sub?: string }
   showPlayerPicker?: boolean
+  /** Optional content rendered directly above the tab strip. Used by decks
+   * that need an in-deck toggle (e.g. WR/TE selector on Pass Catchers). */
+  prefixContent?: ReactNode
 }) {
   const [activeId, setActiveId] = useState(tabs[0]?.id)
   const active = tabs.find(t => t.id === activeId) ?? tabs[0]
@@ -58,6 +61,9 @@ export default function DeckShell({
             </div>
           )}
         </div>
+
+        {/* Prefix content (in-deck toggles, subject selectors, etc.) */}
+        {prefixContent}
 
         {/* Reports label — the tab bar itself carries the visual weight; no counter banner. */}
         <p className="eyebrow mb-2">Reports</p>

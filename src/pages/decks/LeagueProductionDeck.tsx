@@ -186,7 +186,10 @@ function defsFor(kind: Kind, pos: Pos): MDef[] {
 function PlayerReport({ kind }: { kind: Kind }) {
   const { slicers } = useSlicers(); const pos = usePos()
   const defs = defsFor(kind, pos)
-  const sortKey = kind === 'rate' ? 'epa' : kind === 'fantasy' ? 'ppr' : defs[0].key
+  // FIX: rate defs (Efficiency Leaders) never had an 'epa' column — sort key
+  // was invalid, causing DuckDB to reject the query and the tab to render empty.
+  // Fall back to the position's headline rate (defs[0]) same as prod uses.
+  const sortKey = kind === 'fantasy' ? 'ppr' : defs[0].key
   const { title, sub } = KIND_META[kind]
   const fantasy = kind === 'fantasy'
   const sql = `SELECT player_display_name AS cat, ${selOf(defs)} FROM ${playerGameLog(slicers)} g WHERE "position"='${pos}'
