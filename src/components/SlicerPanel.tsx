@@ -24,7 +24,7 @@ export type Group =
   | 'down' | 'distance' | 'qtr' | 'score' | 'zone'
   | 'shotgun' | 'noHuddle' | 'playType' | 'passDepth' | 'runDir' | 'pressure' | 'threshold'
 
-const SEASONS = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+const SEASONS = [2023, 2024, 2025, 2026]
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1)
 const PLAYOFF_WEEKS = [19, 20, 21, 22]
 
