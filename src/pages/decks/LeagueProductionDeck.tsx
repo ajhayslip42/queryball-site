@@ -16,7 +16,15 @@ import { PctBarTile, TreemapTile, PALETTE } from '@/components/charts/Charts'
 import { fmt } from '@/lib/nfl'
 
 type Pos = 'QB' | 'RB' | 'WR' | 'TE'
-const minG = (s: ReturnType<typeof useSlicers>['slicers']) => (s.weeks.length ? 1 : 3)
+// Minimum games/plays required to appear in a leaderboard.
+// Previously hardcoded (3 games / 20 plays), which silently emptied every
+// report early in a season: with only Week 1 posted, nobody has 3 games.
+// These now scale to how many weeks actually exist in the current slice, so
+// the noise-guard still applies over a full season but never blanks the page.
+const weeksInSlice = (s: ReturnType<typeof useSlicers>['slicers']) =>
+  `(SELECT count(DISTINCT week) FROM plays WHERE 1=1 ${playsWhere(s)})`
+const minG = (s: ReturnType<typeof useSlicers>['slicers']) =>
+  s.weeks.length ? '1' : `least(3, greatest(1, ${weeksInSlice(s)}))`
 const sq = (v: string) => v.replace(/'/g, "''")
 
 /* ---- position-aware metric sets (player_week, category = player) ---- */
@@ -236,7 +244,7 @@ function Situational() {
   const { slicers } = useSlicers(); const pos = usePos()
   const role = pos === 'QB' ? 'passer' : pos === 'RB' ? 'rusher' : 'receiver'
   const base = pos === 'RB' ? 'rush_attempt=1' : 'pass_attempt=1'
-  const minN = slicers.weeks.length ? 1 : 20
+  const minN = slicers.weeks.length ? '1' : `least(20, greatest(1, 2 * ${weeksInSlice(slicers)}))`
   const sql = `SELECT ${role}_player_name AS cat, ${selOf(SIT_DEFS)} FROM plays
     WHERE ${role}_player_name IS NOT NULL AND ${base}
       AND ${role}_player_id IN (SELECT gsis_id FROM players WHERE position='${sq(pos)}') ${playsWhere(slicers)}

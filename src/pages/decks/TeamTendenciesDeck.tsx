@@ -10,7 +10,13 @@ import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
 import { playsWhere, sliceLabel } from '@/lib/slicerSql'
 
-const minN = (s: ReturnType<typeof useSlicers>['slicers']) => (s.weeks.length ? 1 : 50)
+// Minimum plays required for a team to appear. Was hardcoded at 50, which
+// emptied every pass-only report early in a season (a team throws ~35 times a
+// week). Now scales with the weeks actually present in the slice.
+const weeksInSlice = (s: ReturnType<typeof useSlicers>['slicers']) =>
+  `(SELECT count(DISTINCT week) FROM plays WHERE 1=1 ${playsWhere(s)})`
+const minN = (s: ReturnType<typeof useSlicers>['slicers']) =>
+  s.weeks.length ? '1' : `least(50, greatest(1, 15 * ${weeksInSlice(s)}))`
 
 export default function TeamTendenciesDeck() {
   const tabs: DeckTab[] = [
