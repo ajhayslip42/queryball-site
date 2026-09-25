@@ -88,7 +88,7 @@ export type Slicers = {
 }
 
 export const DEFAULTS: Slicers = {
-  seasons: [2025],
+  seasons: [2026],
   weeks: [],
   seasonType: 'regular',
   positions: [],
