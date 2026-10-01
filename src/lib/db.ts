@@ -19,16 +19,32 @@
 
 let _dbPromise: Promise<any> | null = null
 
-async function fetchSeasons(): Promise<number[]> {
+/**
+ * Data files in public/ keep stable filenames, so neither the browser nor the
+ * Cloudflare edge can tell when a weekly refresh has replaced one. The manifest
+ * carries a `version` string which we append to every data URL as ?v=...,
+ * changing the URL whenever the data changes and bypassing both caches.
+ * The manifest itself is fetched with no-store so the new version is always seen.
+ */
+type Manifest = { seasons: number[]; version: string }
+
+async function fetchManifest(): Promise<Manifest> {
   try {
-    const res = await fetch('/data/plays_manifest.json')
-    if (!res.ok) return []
+    const res = await fetch('/data/plays_manifest.json', { cache: 'no-store' })
+    if (!res.ok) return { seasons: [], version: '' }
     const json = await res.json()
-    return Array.isArray(json.seasons) ? json.seasons : []
+    return {
+      seasons: Array.isArray(json.seasons) ? json.seasons : [],
+      version: typeof json.version === 'string' ? json.version : '',
+    }
   } catch {
-    return []
+    return { seasons: [], version: '' }
   }
 }
+
+/** Build a data-file URL carrying the manifest version as a cache key. */
+const dataUrl = (file: string, version: string) =>
+  `${location.origin}/data/${file}${version ? `?v=${encodeURIComponent(version)}` : ''}`
 
 async function getDb(): Promise<any> {
   if (_dbPromise) return _dbPromise
@@ -45,22 +61,22 @@ async function getDb(): Promise<any> {
       await db.instantiate(bundle.mainModule, bundle.pthreadWorker)
       URL.revokeObjectURL(worker_url)
 
-      const seasons = await fetchSeasons()
+      const { seasons, version } = await fetchManifest()
       const conn = await db.connect()
       try {
         // Core tables — always present.
         await conn.query(`
           CREATE VIEW IF NOT EXISTS player_week AS
-            SELECT * FROM read_parquet('${location.origin}/data/player_week.parquet');
+            SELECT * FROM read_parquet('${dataUrl('player_week.parquet', version)}');
           CREATE VIEW IF NOT EXISTS players AS
-            SELECT * FROM read_parquet('${location.origin}/data/players.parquet');
+            SELECT * FROM read_parquet('${dataUrl('players.parquet', version)}');
           CREATE VIEW IF NOT EXISTS games AS
-            SELECT * FROM read_parquet('${location.origin}/data/games.parquet');
+            SELECT * FROM read_parquet('${dataUrl('games.parquet', version)}');
         `)
         // Play-by-play — union whatever seasons the manifest lists.
         if (seasons.length) {
           const union = seasons
-            .map(y => `SELECT * FROM read_parquet('${location.origin}/data/plays_${y}.parquet')`)
+            .map(y => `SELECT * FROM read_parquet('${dataUrl(`plays_${y}.parquet`, version)}')`)
             .join(' UNION ALL ')
           await conn.query(`CREATE VIEW IF NOT EXISTS plays AS ${union};`)
         }
