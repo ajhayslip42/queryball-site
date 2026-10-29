@@ -57,6 +57,11 @@ export default function DeckShell({
   const [sheet, setSheet] = useState<null | 'filters' | 'ask' | 'situations'>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   useEffect(() => { if (isMobile && view === 'report') window.scrollTo({ top: 0 }) }, [activeId, view, isMobile])
+  useEffect(() => {
+    if (!isMobile) return
+    document.body.classList.add('qb-has-contextbar')
+    return () => document.body.classList.remove('qb-has-contextbar')
+  }, [isMobile])
 
   if (isMobile) {
     const openReport = (id: string) => { setActiveId(id); setView('report') }

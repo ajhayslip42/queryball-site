@@ -13,7 +13,7 @@
  */
 import { useEffect, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
-import { X, RotateCcw, ChevronDown } from 'lucide-react'
+import { Check, RotateCcw, ChevronDown } from 'lucide-react'
 import { useSlicers, countActive, DEFAULTS, thresholdsForPositions, THRESH_LABELS, type ThreshKey, type Threshold } from '@/lib/slicers'
 import type { Group } from '@/components/SlicerPanel'
 import { TEAMS, POSITIONS } from '@/lib/nfl'
@@ -62,24 +62,34 @@ export default function FilterSheet({ open, onClose, groups, showPlayerPicker = 
       <div className="qb-sheet-scrim" onClick={onClose} />
       <div className="qb-sheet" role="dialog" aria-label="Filters">
         <div className="qb-sheet-handle" />
+        {/* Header: tabs on the left, Apply pinned top-right. Apply is always in
+         * view no matter how far the body scrolls, and closes the sheet (filters
+         * apply live as you tap them). */}
         <div className="qb-sheet-head">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             {(['filters', 'situations', 'ask'] as const).map(t => (
               <button key={t} type="button" onClick={() => setTab(t)} className={clsx('qb-sheet-tab', tab === t && 'on')}>
                 {t === 'filters' ? 'Filters' : t === 'situations' ? 'Situations' : 'Ask'}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2">
-            {tab === 'filters' && (
-              <div className="qb-seg">
-                <button type="button" className={clsx(mode === 'simple' && 'on')} onClick={() => setMode('simple')}>Simple</button>
-                <button type="button" className={clsx(mode === 'pro' && 'on')} onClick={() => setMode('pro')}>Pro</button>
-              </div>
-            )}
-            <button type="button" onClick={onClose} className="qb-iconbtn" aria-label="Close"><X className="h-4 w-4" /></button>
-          </div>
+          <button type="button" onClick={onClose} className="qb-apply" aria-label="Apply filters and close">
+            <Check className="h-3.5 w-3.5" /> Apply{countActive(slicers) ? ` · ${countActive(slicers)}` : ''}
+          </button>
         </div>
+        {tab === 'filters' && (
+          <div className="qb-sheet-sub">
+            <span className="text-[11.5px] text-muted num">
+              {loading || count == null ? '…' : <><b className="text-accent2">{count.toLocaleString()}</b> plays match</>}
+              {count != null && count > 0 && count < 40 && <span className="text-bad"> · thin slice</span>}
+              {count === 0 && <span className="text-bad"> · nothing matches</span>}
+            </span>
+            <div className="qb-seg">
+              <button type="button" className={clsx(mode === 'simple' && 'on')} onClick={() => setMode('simple')}>Simple</button>
+              <button type="button" className={clsx(mode === 'pro' && 'on')} onClick={() => setMode('pro')}>Pro</button>
+            </div>
+          </div>
+        )}
 
         <div className="qb-sheet-body">
           {tab === 'ask' && (
@@ -222,13 +232,11 @@ export default function FilterSheet({ open, onClose, groups, showPlayerPicker = 
         </div>
 
         <div className="qb-sheet-foot">
-          <button type="button" onClick={reset} className="inline-flex items-center gap-1 text-[11.5px] text-muted"><RotateCcw className="h-3 w-3" /> Reset</button>
+          <button type="button" onClick={reset} className="inline-flex items-center gap-1 text-[11.5px] text-muted"><RotateCcw className="h-3 w-3" /> Reset all</button>
           <span className="text-[11.5px] text-muted num">
             {loading || count == null ? '…' : <><b className="text-accent2">{count.toLocaleString()}</b> plays match</>}
-            {count != null && count > 0 && count < 40 && <span className="text-bad"> · thin slice</span>}
-            {count === 0 && <span className="text-bad"> · nothing matches</span>}
           </span>
-          <button type="button" onClick={onClose} className="qb-cta">Show results · {countActive(slicers)}</button>
+          <button type="button" onClick={onClose} className="qb-cta">Show results</button>
         </div>
       </div>
     </>

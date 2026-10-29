@@ -19,6 +19,7 @@ export default function ContextBar({ onOpenFilters, onOpenAsk }: {
   const n = countActive(slicers)
   return (
     <div className="qb-contextbar">
+      <img src="/logo.png" alt="" className="qb-minilogo" aria-hidden="true" />
       <button type="button" onClick={onOpenFilters} className="qb-filterbtn" aria-label="Open filters">
         <SlidersHorizontal className="h-3.5 w-3.5" />
         <span>Filters</span>

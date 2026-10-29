@@ -334,19 +334,28 @@
 
 /* Context bar: sticky under the header */
 .qb-contextbar {
-  position: sticky; top: 61px; z-index: 25;
+  position: sticky; top: var(--qb-header-h, 61px); z-index: 25;
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px;
   background: rgba(255,255,255,0.96);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   border-bottom: 1px solid #E2E6EA;
+  transition: top 160ms ease;
 }
+/* The Filters pill is the thesis, so it gets the one saturated accent on the
+ * page: the steel gradient the active report tab uses, plus a glow. */
 .qb-filterbtn {
   display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
-  background: #2A3B47; color: #fff; border-radius: 999px;
-  padding: 6px 10px 6px 9px; font-size: 11.5px; font-weight: 700;
+  background: linear-gradient(180deg, #6FA6BD 0%, #4F8299 100%);
+  color: #fff; border-radius: 999px; border: 1px solid #3F6F85;
+  padding: 7px 11px 7px 10px; font-size: 12px; font-weight: 800; letter-spacing: 0.01em;
+  box-shadow: 0 4px 14px -4px rgba(97,145,165,0.75), 0 1px 0 rgba(255,255,255,0.25) inset;
 }
-.qb-filterbtn-n { background: #fff; color: #2A3B47; border-radius: 999px; font-size: 10px; padding: 0 6px; line-height: 15px; }
+.qb-filterbtn:active { transform: translateY(1px); }
+.qb-filterbtn-n { background: #fff; color: #2A3B47; border-radius: 999px; font-size: 10.5px; font-weight: 800; padding: 0 6px; line-height: 16px; }
+/* Mini logo inside the context bar — only while the header is collapsed. */
+.qb-minilogo { display: none; height: 18px; width: auto; flex-shrink: 0; }
+html.qb-collapsed .qb-minilogo { display: block; }
 .qb-chipscroll { display: flex; gap: 5px; overflow-x: auto; flex: 1; min-width: 0; padding-right: 4px; }
 .qb-ctxchip {
   display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;
@@ -361,7 +370,7 @@
 .qb-sheet-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(31,45,56,0.45); backdrop-filter: blur(2px); }
 .qb-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 61;
-  max-height: 88vh; display: flex; flex-direction: column;
+  max-height: 88vh; max-height: 88dvh; display: flex; flex-direction: column;
   background: #fff; border-radius: 18px 18px 0 0;
   box-shadow: 0 -8px 30px rgba(31,45,56,0.25);
   animation: qb-sheet-up 220ms cubic-bezier(0.2, 0, 0, 1);
@@ -369,13 +378,20 @@
 }
 @keyframes qb-sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 .qb-sheet-handle { width: 40px; height: 4px; border-radius: 2px; background: #C9D4DC; margin: 8px auto 4px; }
-.qb-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px 8px; border-bottom: 1px solid #E2E6EA; }
+.qb-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px 8px; border-bottom: 1px solid #E2E6EA; flex-shrink: 0; }
+.qb-sheet-sub { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 14px; border-bottom: 1px solid #EDF0F2; background: #F7F9FA; flex-shrink: 0; }
+.qb-apply {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; white-space: nowrap;
+  background: #2A3B47; color: #fff; border-radius: 999px; padding: 7px 13px; font-size: 12.5px; font-weight: 800;
+  box-shadow: 0 3px 10px -3px rgba(42,59,71,0.5);
+}
+.qb-apply:active { transform: translateY(1px); }
 .qb-sheet-tab { font-size: 13px; font-weight: 700; color: #94A0AA; padding: 4px 2px; border-bottom: 2px solid transparent; }
 .qb-sheet-tab.on { color: #2A3B47; border-color: #2A3B47; }
 .qb-sheet-body { flex: 1; overflow-y: auto; padding: 14px 14px 10px; -webkit-overflow-scrolling: touch; }
 .qb-sheet-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 10px 14px; border-top: 1px solid #E2E6EA; background: #fff;
+  padding: 10px 14px; border-top: 1px solid #E2E6EA; background: #fff; flex-shrink: 0;
 }
 .qb-sheet-card { border: 1px solid #D5DFE5; border-radius: 10px; padding: 10px; background: #F3F7F9; }
 .qb-seg { display: inline-flex; border: 1px solid #D5DFE5; border-radius: 999px; padding: 2px; font-size: 11px; font-weight: 700; }
@@ -405,13 +421,18 @@
 .qb-ask.compact .qb-ask-row { padding: 6px 10px; }
 
 /* Bottom nav */
+/* Sticky (not fixed) so iOS Safari keeps it above its own toolbar; it is the
+ * last child of the page flex column, so it pins to the viewport bottom while
+ * scrolling and sits at the page end when the page is short. */
 .qb-bottomnav {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  position: sticky; bottom: 0; left: 0; right: 0; z-index: 50; margin-top: auto;
   display: flex; justify-content: space-around; align-items: stretch;
-  background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+  background: #FFFFFF;
   border-top: 1px solid #E2E6EA;
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  transform: translateZ(0);
 }
+.qb-root { min-height: 100vh; min-height: 100dvh; }
 @media (min-width: 1024px) { .qb-bottomnav { display: none; } }
 .qb-navitem { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; font-size: 10px; font-weight: 600; color: #94A0AA; padding: 2px 0; }
 .qb-navitem.on { color: #2A3B47; }
@@ -463,3 +484,38 @@
 }
 .qb-studio-table thead th { position: sticky; top: 0; background: #2A3B47; color: #fff; z-index: 2; }
 .qb-studio-table thead th:first-child { z-index: 3; background: #2A3B47; }
+
+/* =====================================================================
+   Collapsing header (phones/tablets). useCollapsingHeader() toggles
+   html.qb-collapsed on scroll-down and sets --qb-header-h.
+   ===================================================================== */
+.qb-minibrand { display: none; }
+@media (max-width: 1023px) {
+  .site-header { transition: transform 180ms ease; }
+  html.qb-collapsed .site-header { position: static; }          /* scrolls away */
+  html.qb-collapsed .qb-contextbar { top: 0; }                   /* takes its place */
+  /* Pages without a context bar get a tiny floating brand instead. */
+  html.qb-collapsed .qb-minibrand {
+    display: flex; position: fixed; top: 8px; left: 10px; z-index: 40;
+    background: rgba(255,255,255,0.95); border: 1px solid #E2E6EA; border-radius: 999px;
+    padding: 4px 9px; box-shadow: 0 2px 8px rgba(31,45,56,0.12);
+    animation: qb-fade 160ms ease-out;
+  }
+  html.qb-collapsed .qb-minibrand img { height: 16px; width: auto; }
+  html.qb-collapsed body.qb-has-contextbar .qb-minibrand { display: none; }
+}
+@keyframes qb-fade { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Landscape phones: the chrome shrinks before the user even scrolls. */
+@media (max-width: 1023px) and (orientation: landscape) and (max-height: 520px) {
+  .site-header img { height: 26px !important; }
+  .site-header > div { padding-top: 6px !important; padding-bottom: 6px !important; }
+  .qb-contextbar { padding: 5px 10px; }
+  .qb-pager { padding: 4px 6px 2px; }
+  .qb-pager + div { display: none; }               /* neighbours / "All reports" row */
+  .qb-mobile-deck .font-display.text-3xl { font-size: 20px; }
+  .qb-sheet { max-height: 96vh; max-height: 96dvh; }
+  .qb-bottomnav { padding-top: 3px; }
+  .qb-navitem svg { height: 16px; width: 16px; }
+  .qb-navitem span { font-size: 9px; }
+}

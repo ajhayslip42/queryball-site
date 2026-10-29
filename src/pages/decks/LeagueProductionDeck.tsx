@@ -7,9 +7,9 @@
 import DeckShell, { Tile, type DeckTab } from '@/components/deck/DeckShell'
 import DataTable, { type Column } from '@/components/DataTable'
 import { MetricReport, metricsOf, selOf, F, autoType, type MDef } from '@/components/deck/Panels'
-import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
+import { QueryState, FantasyBanner, NoData } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
-import { useSlicers } from '@/lib/slicers'
+import { useSlicers, hasSituationalFilters } from '@/lib/slicers'
 import { playsWhere, sliceLabel, thresholdHaving } from '@/lib/slicerSql'
 import { playerGameLog } from '@/lib/playerGameSql'
 import { PctBarTile, TreemapTile, PALETTE } from '@/components/charts/Charts'
@@ -23,8 +23,12 @@ type Pos = 'QB' | 'RB' | 'WR' | 'TE'
 // the noise-guard still applies over a full season but never blanks the page.
 const weeksInSlice = (s: ReturnType<typeof useSlicers>['slicers']) =>
   `(SELECT count(DISTINCT week) FROM plays WHERE 1=1 ${playsWhere(s)})`
+// Minimum games for a player to make a leaderboard. Bulk season view keeps the
+// 3-game floor; once the user slices by situation (or picks weeks) the floor
+// drops to 1 — a player's "games" in a red-zone slice are only the games where
+// they had a red-zone touch, and the floor was emptying narrow slices.
 const minG = (s: ReturnType<typeof useSlicers>['slicers']) =>
-  s.weeks.length ? '1' : `least(3, greatest(1, ${weeksInSlice(s)}))`
+  s.weeks.length || hasSituationalFilters(s) ? '1' : `least(3, greatest(1, ${weeksInSlice(s)}))`
 const sq = (v: string) => v.replace(/'/g, "''")
 
 /* ---- position-aware metric sets (player_week, category = player) ---- */
@@ -204,8 +208,9 @@ function PlayerReport({ kind }: { kind: Kind }) {
     GROUP BY cat HAVING count(distinct game_id) >= ${minG(slicers)} ${thresholdHaving(slicers)} ORDER BY ${sortKey} DESC NULLS LAST LIMIT 20`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [{ key: 'cat', label: 'Player' }, ...defs.map(d => ({ key: d.key, label: d.label, numeric: true, format: F[d.f] }))]
+  const floorNote = minG(slicers) === '1' ? '' : ' · players with 3+ games (any slice or week filter drops this to 1)'
   const body = (
-    <MetricReport loading={q.loading} title={title} subtitle={`${pos} · ${sub} · ${sliceLabel(slicers)}`}
+    <MetricReport loading={q.loading} title={title} subtitle={`${pos} · ${sub} · ${sliceLabel(slicers)}${floorNote}`}
       mini={{ rows: q.data ?? [], cols, sort: { key: sortKey, dir: 'desc' }, caption: `Top 20 ${pos}s — sortable` }}
       panels={[{ rows: q.data ?? [], categoryKey: 'cat', short: true, metrics: metricsOf(defs) }]} />
   )
@@ -244,11 +249,12 @@ function Situational() {
   const { slicers } = useSlicers(); const pos = usePos()
   const role = pos === 'QB' ? 'passer' : pos === 'RB' ? 'rusher' : 'receiver'
   const base = pos === 'RB' ? 'rush_attempt=1' : 'pass_attempt=1'
-  const minN = slicers.weeks.length ? '1' : `least(20, greatest(1, 2 * ${weeksInSlice(slicers)}))`
+  // No floor: top 20 by volume in the slice. Small samples sink naturally and
+  // the Plays column is right there for the reader.
+  const posBase = `${base} AND ${role}_player_id IN (SELECT gsis_id FROM players WHERE position='${sq(pos)}')`
   const sql = `SELECT ${role}_player_name AS cat, ${selOf(SIT_DEFS)} FROM plays
-    WHERE ${role}_player_name IS NOT NULL AND ${base}
-      AND ${role}_player_id IN (SELECT gsis_id FROM players WHERE position='${sq(pos)}') ${playsWhere(slicers)}
-    GROUP BY cat HAVING count(*) >= ${minN} ORDER BY n DESC LIMIT 20`
+    WHERE ${role}_player_name IS NOT NULL AND ${posBase} ${playsWhere(slicers)}
+    GROUP BY cat ORDER BY n DESC LIMIT 20`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [{ key: 'cat', label: 'Player' }, ...SIT_DEFS.map(d => ({ key: d.key, label: d.label, numeric: true, format: F[d.f] }))]
   return <MetricReport loading={q.loading} title="Situational production" subtitle={`${pos} · by-play, in the slice you set · ${sliceLabel(slicers)}`}
@@ -290,7 +296,7 @@ function EmergingProducers() {
       round(avg(v) FILTER (WHERE rn <= 4) - avg(v) FILTER (WHERE rn > 4), 1) v_delta,
       round(avg(y) FILTER (WHERE rn <= 4) - avg(y) FILTER (WHERE rn > 4), 1) y_delta
     FROM ranked
-    GROUP BY nm HAVING max(gp) >= 6 AND avg(v) FILTER (WHERE rn <= 4) >= 2
+    GROUP BY nm HAVING max(gp) >= ${hasSituationalFilters(slicers) ? 3 : 6} AND avg(v) FILTER (WHERE rn <= 4) >= ${hasSituationalFilters(slicers) ? 1 : 2}
     ORDER BY v_delta DESC NULLS LAST LIMIT 20`
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [
@@ -302,6 +308,10 @@ function EmergingProducers() {
     { key: 'y_prior', label: `${ydLabel} (prior)`, numeric: true, format: F.d1 },
     { key: 'y_delta', label: `Δ ${ydLabel}`, numeric: true, format: F.d1 },
   ]
+  const need = hasSituationalFilters(slicers) ? 3 : 6
+  if (!q.loading && (q.data ?? []).length === 0) {
+    return <NoData note={`Emerging Producers compares a player's last four games with everything before them, so it needs at least ${need} games in the slice. Widen the weeks or seasons to use it.`} />
+  }
   return <MetricReport loading={q.loading} title="Emerging producers"
     subtitle={`${pos} · last-4 vs season-to-date · ${sliceLabel(slicers)} · players heating up`}
     mini={{ rows: q.data ?? [], cols, sort: { key: 'v_delta', dir: 'desc' }, caption: 'Sorted by volume delta' }}

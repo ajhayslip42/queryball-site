@@ -16,7 +16,7 @@
  */
 import DeckShell, { Tile, type DeckTab } from '@/components/deck/DeckShell'
 import { useSlicers } from '@/lib/slicers'
-import { sliceLabel, thresholdHaving } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel, thresholdHaving } from '@/lib/slicerSql'
 import { playerGameLog } from '@/lib/playerGameSql'
 import { useQuery } from '@/lib/useQuery'
 import DataTable, { type Column } from '@/components/DataTable'
@@ -335,7 +335,7 @@ function SituationalPanel({ pos, teamS, team, dim, volCol, volLabel }: {
     WITH ev AS (
       SELECT ${roleId} pid, ${dim.expr} bucket
       FROM plays WHERE ${roleFilter}
-        AND posteam = '${team}' AND season IN (${teamS.seasons.join(',') || '2025'}) AND season_type = 'REG'
+        ${playsWhere(teamS)}
     )
     SELECT pl.display_name nm, ev.bucket, count(*)::int v
     FROM ev JOIN players pl ON pl.gsis_id = ev.pid

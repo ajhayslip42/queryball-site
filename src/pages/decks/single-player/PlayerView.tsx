@@ -528,7 +528,7 @@ function QBQuadrantReport({ player }: { player: Player }) {
       count(*)::int att, sum(complete_pass)::int cmp,
       round(sum(complete_pass)*100.0/count(*),1) comp_pct,
       round(sum(passing_yards)*1.0/count(*),2) ypa,
-      sum(passing_yards)::int yds, sum(passing_tds)::int td
+      sum(passing_yards)::int yds, sum(pass_touchdown)::int td
     FROM plays WHERE passer_player_id=${sq(player.gsis_id)} AND pass_attempt=1
       AND air_yards IS NOT NULL AND pass_location IS NOT NULL ${playsWhere(slicers)}
     GROUP BY dir, depth`

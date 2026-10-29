@@ -8,15 +8,10 @@ import { MetricReport, metricsOf, selOf, miniColsOf, F, type MDef } from '@/comp
 import { QueryState } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
-import { playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel, withEveryTeam } from '@/lib/slicerSql'
 
-// Minimum plays required for a team to appear. Was hardcoded at 50, which
-// emptied every pass-only report early in a season (a team throws ~35 times a
-// week). Now scales with the weeks actually present in the slice.
-const weeksInSlice = (s: ReturnType<typeof useSlicers>['slicers']) =>
-  `(SELECT count(DISTINCT week) FROM plays WHERE 1=1 ${playsWhere(s)})`
-const minN = (s: ReturnType<typeof useSlicers>['slicers']) =>
-  s.weeks.length ? '1' : `least(50, greatest(1, 15 * ${weeksInSlice(s)}))`
+// No sample floor on team reports: every team in the season always appears,
+// with 0 / – when it has no plays in the slice (see withEveryTeam).
 
 export default function TeamTendenciesDeck() {
   const tabs: DeckTab[] = [
@@ -77,6 +72,7 @@ const SETS: Record<string, { title: string; sub: string; defs: MDef[] }> = {
     { key: 'ay', label: 'Total Air Yds', expr: 'sum(air_yards) FILTER(WHERE pass_attempt=1)', f: 'int' },
     { key: 'yac', label: 'Total YAC', expr: 'sum(yards_after_catch)', f: 'int' },
     { key: 'pfd', label: 'Pass 1st Downs', expr: 'sum(first_down) FILTER(WHERE pass_attempt=1)', f: 'int' },
+    { key: 'n', label: 'Pass Plays (sample)', expr: 'count(*) FILTER(WHERE pass_attempt=1)', f: 'int' },
   ] },
   sit: { title: 'Situational behavior', sub: 'third down, red zone, goal line — by team', defs: [
     { key: 'third', label: '3rd-Down Conv %', expr: 'round(sum(first_down) FILTER(WHERE down=3)*100.0/nullif(count(*) FILTER(WHERE down=3),0),1)', f: 'pct' },
@@ -89,6 +85,7 @@ const SETS: Record<string, { title: string; sub: string; defs: MDef[] }> = {
     { key: 'gltd', label: 'Goal-Line TD %', expr: 'round(sum(touchdown) FILTER(WHERE yardline_100<=5)*100.0/nullif(count(*) FILTER(WHERE yardline_100<=5),0),1)', f: 'pct' },
     { key: 'shortyd', label: 'Short-Yd Conv %', expr: 'round(sum(first_down) FILTER(WHERE ydstogo<=2)*100.0/nullif(count(*) FILTER(WHERE ydstogo<=2),0),1)', f: 'pct' },
     { key: 'ypsit', label: 'Yds / Play', expr: 'round(sum(COALESCE(passing_yards,0)+COALESCE(rushing_yards,0))*1.0/count(*),2)', f: 'd2' },
+    { key: 'n', label: 'Plays (sample)', expr: 'count(*)', f: 'int' },
   ] },
   expl: { title: 'Explosive plays & scoring', sub: 'by team', defs: [
     { key: 'expl', label: 'Explosive %', expr: 'round(count(*) FILTER(WHERE (pass_attempt=1 AND passing_yards>=20) OR (rush_attempt=1 AND rushing_yards>=15))*100.0/count(*),1)', f: 'pct' },
@@ -101,6 +98,7 @@ const SETS: Record<string, { title: string; sub: string; defs: MDef[] }> = {
     { key: 'fd', label: 'Total 1st Downs', expr: 'sum(first_down)', f: 'int' },
     { key: 'fdpct', label: '1st Down %', expr: 'round(sum(first_down)*100.0/count(*),1)', f: 'pct' },
     { key: 'ypp2', label: 'Yds / Play', expr: 'round(sum(COALESCE(passing_yards,0)+COALESCE(rushing_yards,0))*1.0/count(*),2)', f: 'd2' },
+    { key: 'n', label: 'Plays (sample)', expr: 'count(*)', f: 'int' },
   ] },
   eff: { title: 'Overall efficiency', sub: 'by team', defs: [
     { key: 'ypp2', label: 'Yds / Play', expr: 'round(sum(COALESCE(passing_yards,0)+COALESCE(rushing_yards,0))*1.0/count(*),2)', f: 'd2' }, { key: 'pypa', label: 'Pass Y/P', expr: 'round(sum(passing_yards) FILTER(WHERE pass_attempt=1)*1.0/nullif(count(*) FILTER(WHERE pass_attempt=1),0),2)', f: 'd2' },
@@ -115,9 +113,10 @@ const SETS: Record<string, { title: string; sub: string; defs: MDef[] }> = {
 
 function Report({ kind }: { kind: keyof typeof SETS }) {
   const { slicers } = useSlicers(); const set = SETS[kind]
-  const sql = `SELECT posteam AS cat, ${selOf(set.defs)} FROM plays
+  const agg = `SELECT posteam AS cat, ${selOf(set.defs)} FROM plays
     WHERE posteam IS NOT NULL AND (pass_attempt=1 OR rush_attempt=1) ${playsWhere(slicers)}
-    GROUP BY cat HAVING count(*) >= ${minN(slicers)} ORDER BY cat`
+    GROUP BY cat`
+  const sql = withEveryTeam(agg, 'posteam', 'cat', slicers, set.defs.map(d => d.key), set.defs.filter(d => d.f === 'int').map(d => d.key))
   const q = useQuery<any>(sql, [sql])
   return <MetricReport loading={q.loading} title={set.title} subtitle={`${set.sub} · ${sliceLabel(slicers)}`}
     mini={{ rows: q.data ?? [], cols: miniColsOf('Team', set.defs), sort: { key: set.defs[0].key, dir: 'desc' }, caption: 'Every team' }}
@@ -126,7 +125,7 @@ function Report({ kind }: { kind: keyof typeof SETS }) {
 
 function DataTab() {
   const { slicers } = useSlicers()
-  const sql = `SELECT posteam tm, count(*) plays,
+  const agg = `SELECT posteam tm, count(*) plays,
       round(sum(pass_attempt)*100.0/nullif(sum(pass_attempt)+sum(rush_attempt),0),1) pass_rt,
       round(count(*) FILTER(WHERE shotgun=1)*100.0/count(*),1) sg, round(count(*) FILTER(WHERE no_huddle=1)*100.0/count(*),1) nh,
       round(avg(air_yards) FILTER(WHERE pass_attempt=1),1) adot, round(sum(COALESCE(passing_yards,0)+COALESCE(rushing_yards,0))*1.0/count(*),2) ypp,
@@ -137,7 +136,9 @@ function DataTab() {
       round(sum(touchdown) FILTER(WHERE yardline_100<=20)*100.0/nullif(count(*) FILTER(WHERE yardline_100<=20),0),1) rztd,
       round(count(*) FILTER(WHERE (pass_attempt=1 AND passing_yards>=20) OR (rush_attempt=1 AND rushing_yards>=15))*100.0/count(*),1) expl
     FROM plays WHERE posteam IS NOT NULL AND (pass_attempt=1 OR rush_attempt=1) ${playsWhere(slicers)}
-    GROUP BY 1 HAVING count(*) >= ${minN(slicers)} ORDER BY ypp DESC`
+    GROUP BY 1`
+  const sql = withEveryTeam(agg, 'posteam', 'tm', slicers,
+    ['plays','pass_rt','sg','nh','adot','ypp','pypa','rypa','fd','fdpct','third','rztd','expl'], ['plays','fd'], 'a.ypp DESC')
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [
     { key: 'tm', label: 'Team' }, { key: 'plays', label: 'Plays', numeric: true }, { key: 'pass_rt', label: 'Pass%', numeric: true, format: F.d1 }, { key: 'sg', label: 'SG%', numeric: true, format: F.d1 }, { key: 'nh', label: 'NH%', numeric: true, format: F.d1 },

@@ -10,6 +10,8 @@ import Studio from '@/pages/Studio'
 import Gallery from '@/pages/Gallery'
 import WeeklyReports from '@/pages/WeeklyReports'
 import BottomNav from '@/components/mobile/BottomNav'
+import { useCollapsingHeader } from '@/lib/useCollapsingHeader'
+import { Link } from 'react-router-dom'
 
 import SinglePlayerDeck    from '@/pages/decks/SinglePlayerDeck'
 import TeamQBDeck          from '@/pages/decks/TeamQBDeck'
@@ -23,10 +25,13 @@ import TeamTendenciesDeck  from '@/pages/decks/TeamTendenciesDeck'
 import LeagueDefenseDeck   from '@/pages/decks/LeagueDefenseDeck'
 
 export default function App() {
+  useCollapsingHeader()
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="qb-root min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 pb-20 lg:pb-0">
+      {/* Tiny brand that appears top-left while the header is collapsed on phones. */}
+      <Link to="/" className="qb-minibrand" aria-label="QueryBall home"><img src="/logo.png" alt="QueryBall" /></Link>
+      <main className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/decks/single-player"     element={<SinglePlayerDeck />} />

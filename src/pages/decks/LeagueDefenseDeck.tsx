@@ -15,15 +15,10 @@ import { MetricReport, metricsOf, selOf, miniColsOf, F, type MDef } from '@/comp
 import { QueryState, FantasyBanner } from '@/components/deck/Helpers'
 import { useQuery } from '@/lib/useQuery'
 import { useSlicers } from '@/lib/slicers'
-import { playsWhere, sliceLabel } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel, withEveryTeam } from '@/lib/slicerSql'
 
-// Minimum plays required for a team to appear. Was hardcoded at 50, which
-// emptied every pass-only report early in a season (a team throws ~35 times a
-// week). Now scales with the weeks actually present in the slice.
-const weeksInSlice = (s: ReturnType<typeof useSlicers>['slicers']) =>
-  `(SELECT count(DISTINCT week) FROM plays WHERE 1=1 ${playsWhere(s)})`
-const minN = (s: ReturnType<typeof useSlicers>['slicers']) =>
-  s.weeks.length ? '1' : `least(50, greatest(1, 15 * ${weeksInSlice(s)}))`
+// No sample floor on team reports: every defense in the season always appears,
+// with 0 / – when it faced no plays in the slice (see withEveryTeam).
 
 export default function LeagueDefenseDeck() {
   const tabs: DeckTab[] = [
@@ -125,7 +120,8 @@ const SETS: Record<string, { title: string; sub: string; base: string; defs: MDe
 
 function Report({ kind }: { kind: keyof typeof SETS }) {
   const { slicers } = useSlicers(); const set = SETS[kind]
-  const sql = `SELECT defteam AS cat, ${selOf(set.defs)} FROM plays WHERE defteam IS NOT NULL AND ${set.base} ${playsWhere(slicers)} GROUP BY cat HAVING count(*) >= ${minN(slicers)} ORDER BY cat`
+  const agg = `SELECT defteam AS cat, ${selOf(set.defs)} FROM plays WHERE defteam IS NOT NULL AND ${set.base} ${playsWhere(slicers)} GROUP BY cat`
+  const sql = withEveryTeam(agg, 'defteam', 'cat', slicers, set.defs.map(d => d.key), set.defs.filter(d => d.f === 'int').map(d => d.key))
   const q = useQuery<any>(sql, [sql])
   return <MetricReport loading={q.loading} title={set.title} subtitle={`${set.sub} · ${sliceLabel(slicers)}`}
     mini={{ rows: q.data ?? [], cols: miniColsOf('Defense', set.defs), sort: { key: set.sortKey, dir: set.sortDir }, caption: 'Every defense — sortable' }}
@@ -154,9 +150,11 @@ function PassByDepth() {
      sum(first_down) FILTER(WHERE ${b.cond}) fd_${b.key},
      sum(pass_touchdown) FILTER(WHERE ${b.cond}) td_${b.key}`
   ).join(',\n     ')
-  const sql = `SELECT defteam tm, ${selects}
+  const agg = `SELECT defteam tm, ${selects}
     FROM plays WHERE defteam IS NOT NULL AND pass_attempt=1 AND air_yards IS NOT NULL ${playsWhere(slicers)}
-    GROUP BY defteam HAVING count(*) >= ${minN(slicers)}`
+    GROUP BY defteam`
+  const depthCols = BUCKETS.flatMap(b => ['att', 'comp', 'yds', 'fd', 'td'].map(k => `${k}_${b.key}`))
+  const sql = withEveryTeam(agg, 'defteam', 'tm', slicers, depthCols, depthCols)
   const q = useQuery<any>(sql, [sql])
   const rows = q.data ?? []
   return (
@@ -203,7 +201,7 @@ function PassByDepth() {
 /* Data Table — packed metrics per defense (no EPA/success) */
 function DataTab() {
   const { slicers } = useSlicers()
-  const sql = `SELECT defteam tm, count(*) plays,
+  const agg = `SELECT defteam tm, count(*) plays,
       round(sum(COALESCE(passing_yards,0)+COALESCE(rushing_yards,0))*1.0/count(*),2) yg,
       sum(passing_yards)::int py, sum(rushing_yards)::int ry,
       sum(pass_touchdown)::int ptd, sum(rush_touchdown)::int rtd,
@@ -212,11 +210,12 @@ function DataTab() {
       sum(first_down)::int fd,
       round(sum(first_down)*100.0/count(*),1) fdpct,
       round(sum(first_down) FILTER(WHERE down=3)*100.0/nullif(count(*) FILTER(WHERE down=3),0),1) third,
-      round((sum(pass_touchdown)+sum(rush_touchdown)) FILTER(WHERE yardline_100<=20)*100.0/nullif(count(*) FILTER(WHERE yardline_100<=20),0),1) rztd,
+      round((sum(pass_touchdown) FILTER(WHERE yardline_100<=20)+sum(rush_touchdown) FILTER(WHERE yardline_100<=20))*100.0/nullif(count(*) FILTER(WHERE yardline_100<=20),0),1) rztd,
       sum(sack)::int sacks, sum(interception)::int ints, sum(fumble_lost)::int fum,
       round(count(*) FILTER(WHERE (pass_attempt=1 AND passing_yards>=20) OR (rush_attempt=1 AND rushing_yards>=15))*100.0/count(*),1) expl
     FROM plays WHERE defteam IS NOT NULL AND (pass_attempt=1 OR rush_attempt=1) ${playsWhere(slicers)}
-    GROUP BY 1 HAVING count(*) >= ${minN(slicers)} ORDER BY yg ASC`
+    GROUP BY 1`
+  const sql = withEveryTeam(agg, 'defteam', 'tm', slicers, ['plays','yg','py','ry','ptd','rtd','comp','adot','fd','fdpct','third','rztd','sacks','ints','fum','expl'], ['plays','py','ry','ptd','rtd','fd','sacks','ints','fum'], 'a.yg ASC')
   const q = useQuery<any>(sql, [sql])
   const cols: Column<any>[] = [
     { key: 'tm', label: 'Def' }, { key: 'plays', label: 'Plays', numeric: true },
@@ -251,7 +250,8 @@ const DST_DEFS: MDef[] = [
 ]
 function Dst() {
   const { slicers } = useSlicers()
-  const sql = `SELECT defteam AS cat, ${selOf(DST_DEFS)} FROM plays WHERE defteam IS NOT NULL AND (pass_attempt=1 OR rush_attempt=1) ${playsWhere(slicers)} GROUP BY cat HAVING count(*) >= ${minN(slicers)} ORDER BY cat`
+  const agg = `SELECT defteam AS cat, ${selOf(DST_DEFS)} FROM plays WHERE defteam IS NOT NULL AND (pass_attempt=1 OR rush_attempt=1) ${playsWhere(slicers)} GROUP BY cat`
+  const sql = withEveryTeam(agg, 'defteam', 'cat', slicers, DST_DEFS.map(d => d.key), DST_DEFS.filter(d => d.f === 'int').map(d => d.key))
   const q = useQuery<any>(sql, [sql])
   return (
     <div className="space-y-4">

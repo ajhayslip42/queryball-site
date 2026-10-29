@@ -16,7 +16,7 @@
 import { useState } from 'react'
 import DeckShell, { Tile, type DeckTab } from '@/components/deck/DeckShell'
 import { useSlicers } from '@/lib/slicers'
-import { sliceLabel, thresholdHaving } from '@/lib/slicerSql'
+import { playsWhere, sliceLabel, thresholdHaving } from '@/lib/slicerSql'
 import { playerGameLog } from '@/lib/playerGameSql'
 import { useQuery } from '@/lib/useQuery'
 import DataTable, { type Column } from '@/components/DataTable'
@@ -323,7 +323,7 @@ function SituationalPanel({ f, teamS, team, dim }: {
     WITH ev AS (
       SELECT receiver_player_id pid, ${dim.expr} bucket
       FROM plays WHERE pass_attempt=1 AND receiver_player_id IS NOT NULL
-        AND posteam = '${team}' AND season IN (${teamS.seasons.join(',') || '2025'}) AND season_type = 'REG'
+        ${playsWhere(teamS)}
     )
     SELECT pl.display_name nm, po.position pos, ev.bucket, count(*)::int v
     FROM ev

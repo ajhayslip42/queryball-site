@@ -6,6 +6,8 @@
  */
 
 import type { ReactNode } from 'react'
+import { useSlicers } from '@/lib/slicers'
+import { emptyHint } from '@/lib/slicerSql'
 
 /** A small stat cell — label above, value below, optional trend arrow. */
 export function Cell({ label, value, trend, small = false }: {
@@ -74,12 +76,15 @@ export function TileLoader({ height = 240 }: { height?: number }) {
 
 /** Shown when a query returns no rows for the current slice. */
 export function NoData({ note }: { note?: string }) {
+  const { slicers } = useSlicers()
+  const hint = emptyHint(slicers)
   return (
     <div className="qcard p-8 text-center">
       <p className="font-display text-xl mb-1">No data for this slice</p>
       <p className="text-sm text-muted max-w-md mx-auto">
-        {note ?? 'Loosen the filters in the rail — this combination of slicers returned no rows.'}
+        {note ?? 'This combination of filters returned no rows. Remove a chip to widen the slice.'}
       </p>
+      {hint && <p className="text-[12px] text-muted max-w-md mx-auto mt-2">Likely why: {hint}</p>}
     </div>
   )
 }
