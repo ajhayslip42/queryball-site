@@ -11,9 +11,15 @@
  *  - Filter rail in its own visually-distinct .filter-rail container
  */
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
 import SlicerPanel, { ActiveSlicerBadges } from '@/components/SlicerPanel'
+import { useIsMobile } from '@/lib/useIsMobile'
+import ContextBar from '@/components/mobile/ContextBar'
+import FilterSheet from '@/components/mobile/FilterSheet'
+import SituationsPanel from '@/components/mobile/SituationsPanel'
+import { DeckContents, ReportPager } from '@/components/mobile/DeckContents'
+import { ContextStamp, ShareButton } from '@/components/mobile/Share'
 
 export type DeckTab = {
   id: string
@@ -41,6 +47,58 @@ export default function DeckShell({
 }) {
   const [activeId, setActiveId] = useState(tabs[0]?.id)
   const active = tabs.find(t => t.id === activeId) ?? tabs[0]
+
+  /* ------------------------------------------------------------------
+   * Phone layout (below lg). The desktop layout below is untouched: the
+   * rail, tab strip and report canvas render exactly as before at lg+.
+   * ---------------------------------------------------------------- */
+  const isMobile = useIsMobile(1024)
+  const [view, setView] = useState<'contents' | 'report'>('contents')
+  const [sheet, setSheet] = useState<null | 'filters' | 'ask' | 'situations'>(null)
+  const canvasRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (isMobile && view === 'report') window.scrollTo({ top: 0 }) }, [activeId, view, isMobile])
+
+  if (isMobile) {
+    const openReport = (id: string) => { setActiveId(id); setView('report') }
+    const header = (
+      <div className="pt-4 pb-3">
+        <p className="eyebrow">Deck {String(deckIndex).padStart(2, '0')}</p>
+        <h1 className="font-display text-3xl mt-1 tracking-tight leading-tight">{title}</h1>
+        {currentSubject && (
+          <p className="mt-1 text-[13px]"><span className="text-muted">Viewing </span><span className="font-semibold text-accent2">{currentSubject.label}</span>{currentSubject.sub && <span className="text-muted"> · {currentSubject.sub}</span>}</p>
+        )}
+        <div className="mt-2 text-[12.5px] text-muted leading-relaxed">{intro}</div>
+        {prefixContent && <div className="mt-3">{prefixContent}</div>}
+        <p className="eyebrow mt-4 mb-2">{tabs.length} reports · tap one</p>
+      </div>
+    )
+    return (
+      <section className="bg-paper qb-mobile-deck">
+        <ContextBar onOpenFilters={() => setSheet('filters')} onOpenAsk={() => setSheet('ask')} />
+        {view === 'contents' ? (
+          <DeckContents tabs={tabs} onOpen={openReport} header={header} />
+        ) : (
+          <ReportPager tabs={tabs} activeId={active.id} onChange={openReport} onContents={() => setView('contents')}>
+            {prefixContent && <div className="px-3 mb-3">{prefixContent}</div>}
+            <div className="px-3 pb-6">
+              <div ref={canvasRef} className="qb-canvas">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] text-muted truncate">{currentSubject?.label ?? title}</span>
+                  <ShareButton target={canvasRef} title={active.label} />
+                </div>
+                <div key={active.id} className="fade-in">
+                  {active.render()}
+                </div>
+                <ContextStamp title={active.label} />
+              </div>
+            </div>
+          </ReportPager>
+        )}
+        <FilterSheet open={sheet !== null} onClose={() => setSheet(null)} groups={slicerGroups}
+          showPlayerPicker={showPlayerPicker} initialTab={sheet ?? 'filters'} />
+      </section>
+    )
+  }
 
   return (
     <section className="bg-paper">
@@ -92,6 +150,12 @@ export default function DeckShell({
             <SlicerPanel groups={slicerGroups} showPlayerPicker={showPlayerPicker} />
           </div>
           <div className="flex-1 min-w-0">
+            {/* Situations — one-tap filter bundles. Additive: the rail still
+             * holds every individual slicer; these just apply several at once. */}
+            <details className="qb-situations-desktop mb-4">
+              <summary className="eyebrow cursor-pointer select-none inline-flex items-center gap-2">Situations <span className="normal-case tracking-normal text-muted2">one tap, several filters</span></summary>
+              <div className="mt-2"><SituationsPanel mode="compact" /></div>
+            </details>
             <ActiveSlicerBadges />
             <div key={active.id} className="fade-in">
               {active.render()}

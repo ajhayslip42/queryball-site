@@ -6,6 +6,10 @@ import Articles from '@/pages/Articles'
 import Article from '@/pages/Article'
 import Projections from '@/pages/Projections'
 import NotFound from '@/pages/NotFound'
+import Studio from '@/pages/Studio'
+import Gallery from '@/pages/Gallery'
+import WeeklyReports from '@/pages/WeeklyReports'
+import BottomNav from '@/components/mobile/BottomNav'
 
 import SinglePlayerDeck    from '@/pages/decks/SinglePlayerDeck'
 import TeamQBDeck          from '@/pages/decks/TeamQBDeck'
@@ -22,7 +26,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1">
+      <main className="flex-1 pb-20 lg:pb-0">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/decks/single-player"     element={<SinglePlayerDeck />} />
@@ -41,10 +45,15 @@ export default function App() {
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:slug" element={<Article />} />
           <Route path="/projections" element={<Projections />} />
+          <Route path="/studio" element={<Studio />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/reports" element={<WeeklyReports />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       <Footer />
+      {/* Phone-only bottom navigation (hidden at lg and up via CSS). */}
+      <BottomNav />
     </div>
   )
 }

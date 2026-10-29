@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, BookOpen, BarChart3 } from 'lucide-react'
+import { ArrowRight, BookOpen, BarChart3, Table2, FileText } from 'lucide-react'
+import AskBox from '@/components/mobile/AskBox'
+import { SITUATIONS } from '@/lib/situations'
+import { DEFAULTS, encodeSlicers } from '@/lib/slicers'
 
 // Descriptors: drier / functional. One line each, no marketing garnish.
 const DECKS = [
@@ -30,9 +33,17 @@ export default function Home() {
               score, down, distance and personnel is decoration. Slice every number through the
               situation that produced it, and the answer becomes one you can act on.
             </p>
-            <div className="mt-6 flex flex-wrap items-center gap-2.5">
+            {/* Search-first entry: a player, a team, or a whole question. */}
+            <div className="mt-6 max-w-xl">
+              <p className="eyebrow mb-2">Start with a player, a team, or a question</p>
+              <AskBox />
+            </div>
+            <div className="mt-5 flex flex-wrap items-center gap-2.5">
               <Link to="/decks/single-player" className="px-4 py-2 bg-ink text-paper rounded-full text-sm font-medium hover:bg-accent transition-colors inline-flex items-center gap-1.5">
                 Open the decks <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+              <Link to="/studio" className="px-4 py-2 border border-line rounded-full text-sm font-medium hover:border-ink transition-colors">
+                Build your own table
               </Link>
               <Link to="/articles" className="px-4 py-2 border border-line rounded-full text-sm font-medium hover:border-ink transition-colors">
                 Read the analysis
@@ -41,6 +52,10 @@ export default function Home() {
           </div>
           <div className="lg:col-span-5 lg:pl-6">
             <div className="space-y-3">
+              <div className="qcard p-3.5">
+                <p className="eyebrow mb-2">Try a situation</p>
+                <SituationsRow />
+              </div>
               <ThesisCard head={<>Outputs without context are <em>decoration.</em></>}
                 sub="Cumulative totals flatten the variance that decides every Sunday." />
               <ThesisCard head={<>Context leads to <em>understanding.</em></>}
@@ -72,7 +87,21 @@ export default function Home() {
 
       {/* ============================== ARTICLES / PROJECTIONS ============================== */}
       <section className="bg-paper">
-        <div className="max-w-[1400px] mx-auto px-6 py-10 grid md:grid-cols-2 gap-4">
+        <div className="max-w-[1400px] mx-auto px-6 py-10 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link to="/studio" className="qcard p-5 hover-grow block">
+            <Table2 className="h-4 w-4 text-accent" />
+            <div className="mt-2 font-display text-xl italic">Studio</div>
+            <p className="mt-1 text-[13px] text-muted leading-relaxed">
+              Pick rows and metrics, get a table. Same filters as the decks, arranged your way. Save it, share it.
+            </p>
+          </Link>
+          <Link to="/reports" className="qcard p-5 hover-grow block">
+            <FileText className="h-4 w-4 text-accent" />
+            <div className="mt-2 font-display text-xl italic">Weekly Reports</div>
+            <p className="mt-1 text-[13px] text-muted leading-relaxed">
+              One PDF per team per week: the season-to-date summary with league context, splits and personnel.
+            </p>
+          </Link>
           <Link to="/articles" className="qcard p-5 hover-grow block">
             <BookOpen className="h-4 w-4 text-accent" />
             <div className="mt-2 font-display text-xl italic">Articles</div>
@@ -90,6 +119,19 @@ export default function Home() {
         </div>
       </section>
     </>
+  )
+}
+
+function SituationsRow() {
+  // Each chip is a link into the League Production deck with that situation
+  // already applied — the fastest way to see what a filter does.
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {SITUATIONS.slice(0, 10).map(s => (
+        <Link key={s.id} to={`/decks/league-production?${encodeSlicers({ ...DEFAULTS, ...s.patch }).toString()}`} className="qb-sitchip" title={s.sets}>{s.label}</Link>
+      ))}
+      <Link to="/decks/league-production" className="qb-sitchip ghost">all situations →</Link>
+    </div>
   )
 }
 

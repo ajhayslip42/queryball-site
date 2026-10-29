@@ -18,7 +18,7 @@
 
 import { useMemo } from 'react'
 import DeckShell, { Tile, type DeckTab } from '@/components/deck/DeckShell'
-import { useSlicers } from '@/lib/slicers'
+import { useSlicers, baselineOf, hasSituationalFilters } from '@/lib/slicers'
 import { playsWhere, sliceLabel } from '@/lib/slicerSql'
 import { playerGameLog } from '@/lib/playerGameSql'
 import { useQuery } from '@/lib/useQuery'
@@ -100,6 +100,13 @@ function Overview({ player }: { player: Player }) {
     FROM ${playerGameLog(slicers, { playerId: player.gsis_id })} g ORDER BY season, week`
   const q = useQuery<any>(sql, [sql])
   const rows = q.data ?? []
+  // Bulk → context reveal: when a situational filter is on, also pull the same
+  // game log with the situational slicers stripped, so the summary strip can
+  // show "overall → in this context" for every stat.
+  const situational = hasSituationalFilters(slicers)
+  const baseSql = situational ? sql.replace(playerGameLog(slicers, { playerId: player.gsis_id }), playerGameLog(baselineOf(slicers), { playerId: player.gsis_id })) : 'SELECT 1 WHERE false'
+  const bq = useQuery<any>(baseSql, [baseSql])
+  const baseRows = situational ? (bq.data ?? undefined) : undefined
 
   return (
     <div className="space-y-3">
@@ -107,7 +114,7 @@ function Overview({ player }: { player: Player }) {
       {q.loading || rows.length === 0 ? <Tile><QueryState loading={q.loading} rows={rows} /></Tile> : (
         <>
           {/* Position-specific summary strip */}
-          <SummaryStrip player={player} rows={rows} />
+          <SummaryStrip player={player} rows={rows} baseRows={baseRows} />
           {/* Position-specific chart set */}
           {pos === 'QB' ? <QBOverviewCharts rows={rows} />
             : pos === 'RB' ? <RBOverviewCharts player={player} rows={rows} />
@@ -118,14 +125,18 @@ function Overview({ player }: { player: Player }) {
   )
 }
 
-function SummaryStrip({ player, rows }: { player: Player; rows: any[] }) {
-  const pos = player.position as Pos
-  const acc = rows.reduce((s: any, r: any) => {
+function accumulate(rows: any[]) {
+  return rows.reduce((s: any, r: any) => {
     (Object.keys(r) as string[]).forEach(k => { if (typeof r[k] === 'number') s[k] = (s[k] || 0) + r[k] })
     s.gp = (s.gp || 0) + 1
     return s
   }, {} as any)
-  const stats: [string, string | number][] = pos === 'QB' ? [
+}
+function SummaryStrip({ player, rows, baseRows }: { player: Player; rows: any[]; baseRows?: any[] }) {
+  const pos = player.position as Pos
+  const acc = accumulate(rows)
+  const base = baseRows && baseRows.length ? accumulate(baseRows) : null
+  const statsOf = (acc: any): [string, string | number][] => pos === 'QB' ? [
     ['Games', acc.gp], ['Cmp/Att', `${acc.cmp}/${acc.att}`], ['Cmp %', pctOf(acc.cmp, acc.att)],
     ['Pass Yds', fmt.int(acc.py)], ['Pass TD', acc.ptd], ['INT', acc.intc], ['Pass 1D', acc.pfd],
     ['Y/A', divRound(acc.py, acc.att, 2)],
@@ -140,16 +151,34 @@ function SummaryStrip({ player, rows }: { player: Player; rows: any[] }) {
     ['AirY (comp)', fmt.int(acc.reay_c)], ['AirY (inc)', fmt.int(acc.reay_i)],
     ['YAC', fmt.int(acc.yac)], ['YAC %', pctOf(acc.yac, acc.recy)],
   ]
+  const stats = statsOf(acc)
+  const baseStats = base ? statsOf(base) : null
+  const num = (v: string | number) => typeof v === 'number' ? v : parseFloat(String(v).replace(/[,%]/g, ''))
   return (
     <div className="rounded border border-line bg-paper p-3">
-      <p className="eyebrow mb-2">Summary — current slice</p>
+      <div className="flex items-baseline justify-between mb-2">
+        <p className="eyebrow">Summary — current slice</p>
+        {baseStats && <p className="text-[10px] text-muted">small number = overall (no situational filters)</p>}
+      </div>
       <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-        {stats.map(([k, v]) => (
-          <div key={String(k)} className="rounded bg-cream px-2 py-1.5">
-            <p className="text-[9.5px] text-muted uppercase tracking-wider">{k}</p>
-            <p className="text-[13px] font-semibold text-ink num">{String(v)}</p>
-          </div>
-        ))}
+        {stats.map(([k, v], i) => {
+          const b = baseStats?.[i]?.[1]
+          const a = num(v), bn = b != null ? num(b) : NaN
+          const showDelta = b != null && !isNaN(a) && !isNaN(bn) && k !== 'Games' && k !== 'Cmp/Att'
+          const up = showDelta && a > bn, down = showDelta && a < bn
+          return (
+            <div key={String(k)} className="rounded bg-cream px-2 py-1.5">
+              <p className="text-[9.5px] text-muted uppercase tracking-wider">{k}</p>
+              <p className="text-[13px] font-semibold text-ink num">{String(v)}</p>
+              {b != null && k !== 'Games' && (
+                <p className="text-[10px] num leading-tight">
+                  <span className="text-muted2">{String(b)}</span>
+                  {showDelta && <span className={up ? 'text-ok' : down ? 'text-bad' : 'text-muted'}> {up ? '▲' : down ? '▼' : '='}</span>}
+                </p>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

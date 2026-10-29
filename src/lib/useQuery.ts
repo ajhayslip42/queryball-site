@@ -17,6 +17,7 @@ export function useQuery<T = any>(sql: string, deps: any[] = []): {
     query<T>(sql).then(rows => {
       if (!cancelled) { setData(rows); setLoading(false) }
     }).catch(err => {
+      console.warn('[QueryBall] query failed:', err?.message ?? err, '\n', sql.slice(0, 400))
       if (!cancelled) { setError(err); setLoading(false) }
     })
     return () => { cancelled = true }

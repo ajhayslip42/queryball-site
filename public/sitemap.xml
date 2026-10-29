@@ -14,4 +14,7 @@
   <url><loc>https://queryball.com/articles/welcome</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://queryball.com/articles/third-down-myth</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://queryball.com/projections</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://queryball.com/studio</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://queryball.com/gallery</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://queryball.com/reports</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
 </urlset>

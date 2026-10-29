@@ -18,13 +18,15 @@ const DECKS: { to: string; label: string; group: string }[] = [
 export default function Header() {
   return (
     <header className="border-b border-line bg-paper/80 backdrop-blur sticky top-0 z-30">
-      <div className="max-w-[1400px] mx-auto px-6 py-3.5 flex items-center justify-between">
+      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 py-3 lg:py-3.5 flex items-center justify-between">
         <Link to="/" className="flex items-center" aria-label="QueryBall">
-          <img src="/logo.png" alt="QueryBall" className="h-14 w-auto" />
+          <img src="/logo.png" alt="QueryBall" className="h-9 lg:h-14 w-auto" />
         </Link>
         <nav className="hidden md:flex items-center gap-7 text-sm">
           <DecksMenu />
+          <NavItem to="/studio">Studio</NavItem>
           <NavItem to="/articles">Articles</NavItem>
+          <NavItem to="/reports">Weekly Reports</NavItem>
           <NavItem to="/projections">Projections</NavItem>
         </nav>
         <Link to="/decks/single-player"

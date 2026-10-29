@@ -1,0 +1,66 @@
+[
+  {
+    "id": "wr-trailing",
+    "title": "WR targets when trailing",
+    "description": "Every wide receiver's targets, yards and TDs on plays where their team was behind. Who gets fed when the game script turns?",
+    "author": "@FF_AHayslip",
+    "tags": ["WR", "Score"],
+    "params": "r=player&m=tgt,rec,rec_yds,ypt,rec_td&pos=WR&sc=lose1to3,lose4to8,lose9to16,lose17&n=50"
+  },
+  {
+    "id": "rb-2nd-short-leading",
+    "title": "RB carries on 2nd & short, leading",
+    "description": "The clock-killing down. Which backs get the ball when the offense is protecting a lead and only needs a yard or two.",
+    "author": "@FF_AHayslip",
+    "tags": ["RB", "Down & distance"],
+    "params": "r=player&m=car,rush_yds,ypc,rush_1d,rush_td&pos=RB&dn=2&dist=d1,d2to3&sc=win1to3,win4to8,win9to16,win17&n=40"
+  },
+  {
+    "id": "te-redzone-weekly",
+    "title": "TE red-zone targets by week",
+    "description": "Tight ends inside the 20, week by week. The TD-equity view for start/sit calls.",
+    "author": "@FF_AHayslip",
+    "tags": ["TE", "Red zone"],
+    "params": "r=player,week&m=tgt,rec,rec_td&pos=TE&zn=redzone&n=100"
+  },
+  {
+    "id": "qb-deep-3rd-long",
+    "title": "Which QBs throw deep on 3rd & long?",
+    "description": "3rd and 7+, 16+ air yards. Attempts, completion rate, yards per attempt and the turnover tax.",
+    "author": "@FF_AHayslip",
+    "tags": ["QB", "Pass depth"],
+    "params": "r=player&m=att,cmp_pct,ypa,pass_adot,pass_td,int&pos=QB&dn=3&dist=d7to9,d10,d11plus&pd=d16to25,d26plus&n=40"
+  },
+  {
+    "id": "team-pass-run-by-score",
+    "title": "Pass vs run by score state, every team",
+    "description": "How play-calling bends with the scoreboard. Plays by team × score state × play type.",
+    "author": "@FF_AHayslip",
+    "tags": ["Team", "Tendencies"],
+    "params": "r=team,score,playtype&m=plays&n=500&sort=team:asc"
+  },
+  {
+    "id": "league-down-distance",
+    "title": "Down & distance tendencies, league-wide",
+    "description": "Plays, yards per attempt and yards per carry in every down-and-distance cell. The baseline every team deviates from.",
+    "author": "@FF_AHayslip",
+    "tags": ["League", "Down & distance"],
+    "params": "r=down,distance&m=plays,ypa,ypc,pass_1d,rush_1d&n=50&sort=down:asc"
+  },
+  {
+    "id": "targets-by-depth-team",
+    "title": "Where the ball goes: targets by depth, per team",
+    "description": "Each offense's target distribution by air-yards bucket, with catch rate and yards per target.",
+    "author": "@FF_AHayslip",
+    "tags": ["Team", "Pass depth"],
+    "params": "r=team,depth&m=tgt,catch_pct,ypt,rec_td&n=300&sort=team:asc"
+  },
+  {
+    "id": "wr-home-away",
+    "title": "Home vs away, every WR",
+    "description": "The split that separates stars from stat-padders: targets, yards and PPR points at home and on the road.",
+    "author": "@FF_AHayslip",
+    "tags": ["WR", "Venue"],
+    "params": "r=player,venue&m=tgt,rec_yds,ypt,ppr&pos=WR&pg=1&n=120"
+  }
+]

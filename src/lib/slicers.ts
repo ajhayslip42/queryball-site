@@ -168,6 +168,9 @@ function decThresh(s: string | null): Threshold {
   return [mn != null && isNaN(mn) ? null : mn, mx != null && isNaN(mx) ? null : mx]
 }
 
+/** Encode a full Slicers object as URL params (shared by Home links, Ask, Studio). */
+export function encodeSlicers(s: Slicers): URLSearchParams { return encodeToParams(s) }
+
 function encodeToParams(s: Slicers): URLSearchParams {
   const p = new URLSearchParams()
   if (s.seasons.length)   p.set('seasons', encList(s.seasons))
@@ -238,15 +241,26 @@ function decodeFromParams(p: URLSearchParams): Slicers {
 // ---------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------
+// Every query-string key the slicer encoder owns. Anything else in the URL
+// (e.g. the Studio's row/metric params) is preserved across slicer updates.
+const SLICER_PARAM_KEYS = new Set([
+  'seasons', 'weeks', 'st', 'pos', 'tm', 'opp', 'pid', 'ha', 'dn', 'dist', 'sc', 'qtr', 'tm2', 'zn',
+  'sg', 'nh', 'pt', 'pd', 'pdir', 'rdir', 'prs', 'thpa', 'thtg', 'thra', 'thrc', 'rf', 'sf',
+])
+function withForeignParams(next: URLSearchParams, current: URLSearchParams): URLSearchParams {
+  current.forEach((v, k) => { if (!SLICER_PARAM_KEYS.has(k)) next.set(k, v) })
+  return next
+}
+
 export function useSlicers() {
   const [search, setSearch] = useSearchParams()
   const slicers = useMemo(() => decodeFromParams(search), [search])
   const update = useCallback((patch: Partial<Slicers>) => {
-    setSearch(encodeToParams({ ...slicers, ...patch }), { replace: true })
-  }, [slicers, setSearch])
+    setSearch(withForeignParams(encodeToParams({ ...slicers, ...patch }), search), { replace: true })
+  }, [slicers, search, setSearch])
   const reset = useCallback(() => {
-    setSearch(encodeToParams(DEFAULTS), { replace: true })
-  }, [setSearch])
+    setSearch(withForeignParams(encodeToParams(DEFAULTS), search), { replace: true })
+  }, [search, setSearch])
   return { slicers, update, reset }
 }
 
@@ -277,4 +291,61 @@ export function countActive(s: Slicers): number {
   if (s.roof.length) n++
   if (s.surface.length) n++
   return n
+}
+
+// ---------------------------------------------------------------
+// Baseline vs. context (mobile overhaul, Oct 2026)
+//
+// "Identity" slicers say WHO and WHEN (season, week, team, player, position).
+// "Situational" slicers say in what football moment. The bulk→context reveal
+// compares a stat with situational slicers stripped (the baseline) against
+// the same stat in the full slice, so a user can see what filtering did.
+// ---------------------------------------------------------------
+export const SITUATIONAL_KEYS = [
+  'homeAway', 'downs', 'distances', 'scoreStates', 'quarters', 'twoMinute', 'zones',
+  'shotgun', 'noHuddle', 'playTypes', 'passDepth', 'passDir', 'runDir', 'pressure',
+  'roof', 'surface',
+] as const satisfies readonly (keyof Slicers)[]
+
+/** The same slice with every situational filter reset to its default. */
+export function baselineOf(s: Slicers): Slicers {
+  const out: Slicers = { ...s }
+  for (const k of SITUATIONAL_KEYS) (out as any)[k] = DEFAULTS[k]
+  return out
+}
+
+/** How many situational (non-identity) filters are applied. */
+export function countSituational(s: Slicers): number {
+  let n = 0
+  if (s.homeAway !== 'all') n++
+  if (s.downs.length) n++
+  if (s.distances.length) n++
+  if (s.scoreStates.length) n++
+  if (s.quarters.length) n++
+  if (s.twoMinute !== 'all') n++
+  if (s.zones.length) n++
+  if (s.shotgun !== 'all') n++
+  if (s.noHuddle !== 'all') n++
+  if (s.playTypes.length) n++
+  if (s.passDepth.length) n++
+  if (s.passDir.length) n++
+  if (s.runDir.length) n++
+  if (s.pressure !== 'all') n++
+  if (s.roof.length) n++
+  if (s.surface.length) n++
+  return n
+}
+export const hasSituationalFilters = (s: Slicers) => countSituational(s) > 0
+
+/** Plain-language names for the filter groups, used by the mobile sheet. */
+export const SCORE_MACRO: Record<'trailing' | 'close' | 'leading' | 'tied', ScoreState[]> = {
+  trailing: ['lose1to3', 'lose4to8', 'lose9to16', 'lose17'],
+  close:    ['lose4to8', 'lose1to3', 'tied', 'win1to3', 'win4to8'],
+  leading:  ['win1to3', 'win4to8', 'win9to16', 'win17'],
+  tied:     ['tied'],
+}
+export const DISTANCE_MACRO: Record<'short' | 'medium' | 'long', DistanceBucket[]> = {
+  short: ['d1', 'd2to3'],
+  medium: ['d4to6', 'd7to9'],
+  long: ['d10', 'd11plus'],
 }
