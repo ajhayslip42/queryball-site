@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { User, Users, Trophy, Table2, Menu, X } from 'lucide-react'
+import { User, Users, Swords, Table2, Menu, X } from 'lucide-react'
 import clsx from 'clsx'
 
 type Item = { to: string; label: string; sub?: string }
@@ -18,12 +18,10 @@ const TEAM: Item[] = [
   { to: '/decks/team-defense', label: 'Team Defense', sub: 'Production allowed' },
   { to: '/decks/team-tendencies', label: 'Tendencies', sub: 'Play-calling by situation' },
 ]
-const LEAGUE: Item[] = [
-  { to: '/decks/league-production', label: 'League Production', sub: 'Leaderboards by situation' },
-  { to: '/decks/league-defense', label: 'League Defense', sub: 'Defensive rankings' },
-]
 const MORE: Item[] = [
   { to: '/', label: 'Home' },
+  { to: '/decks/league-production', label: 'League Production', sub: 'Leaderboards by situation' },
+  { to: '/decks/league-defense', label: 'League Defense', sub: 'Defensive rankings' },
   { to: '/articles', label: 'Articles' },
   { to: '/reports', label: 'Weekly Reports', sub: 'Team report PDFs' },
   { to: '/projections', label: 'Projections' },
@@ -33,14 +31,13 @@ const MORE: Item[] = [
 export default function BottomNav() {
   const loc = useLocation()
   const navigate = useNavigate()
-  const [menu, setMenu] = useState<'team' | 'league' | 'more' | null>(null)
+  const [menu, setMenu] = useState<'team' | 'more' | null>(null)
   useEffect(() => { setMenu(null) }, [loc.pathname])
 
   const isTeam = /\/decks\/team-/.test(loc.pathname)
-  const isLeague = /\/decks\/league-/.test(loc.pathname)
   const isPlayer = loc.pathname === '/decks/single-player'
   const isStudio = loc.pathname === '/studio'
-  const items = menu === 'team' ? TEAM : menu === 'league' ? LEAGUE : menu === 'more' ? MORE : []
+  const items = menu === 'team' ? TEAM : menu === 'more' ? MORE : []
 
   // Keep the current query string when hopping between decks so the context
   // (season, team, situation) carries over.
@@ -53,7 +50,7 @@ export default function BottomNav() {
           <div className="qb-sheet-scrim" style={{ zIndex: 70 }} onClick={() => setMenu(null)} />
           <div className="qb-navmenu">
             <div className="flex items-center justify-between mb-2">
-              <p className="eyebrow">{menu === 'team' ? 'Team decks' : menu === 'league' ? 'League decks' : 'More'}</p>
+              <p className="eyebrow">{menu === 'team' ? 'Team decks' : 'More'}</p>
               <button type="button" onClick={() => setMenu(null)} className="qb-iconbtn" aria-label="Close"><X className="h-4 w-4" /></button>
             </div>
             <div className="space-y-1">
@@ -75,9 +72,9 @@ export default function BottomNav() {
         <button type="button" onClick={() => setMenu(m => m === 'team' ? null : 'team')} className={clsx('qb-navitem', (isTeam || menu === 'team') && 'on')}>
           <Users className="h-5 w-5" /><span>Team</span>
         </button>
-        <button type="button" onClick={() => setMenu(m => m === 'league' ? null : 'league')} className={clsx('qb-navitem', (isLeague || menu === 'league') && 'on')}>
-          <Trophy className="h-5 w-5" /><span>League</span>
-        </button>
+        <NavLink to="/matchup" className={clsx('qb-navitem', loc.pathname === '/matchup' && 'on')}>
+          <Swords className="h-5 w-5" /><span>Matchup</span>
+        </NavLink>
         <NavLink to="/studio" className={clsx('qb-navitem', isStudio && 'on')}>
           <Table2 className="h-5 w-5" /><span>Studio</span>
         </NavLink>

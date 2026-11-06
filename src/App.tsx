@@ -9,6 +9,7 @@ import NotFound from '@/pages/NotFound'
 import Studio from '@/pages/Studio'
 import Gallery from '@/pages/Gallery'
 import WeeklyReports from '@/pages/WeeklyReports'
+import Matchup from '@/pages/Matchup'
 import BottomNav from '@/components/mobile/BottomNav'
 import { useCollapsingHeader } from '@/lib/useCollapsingHeader'
 import { Link } from 'react-router-dom'
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:slug" element={<Article />} />
           <Route path="/projections" element={<Projections />} />
+          <Route path="/matchup" element={<Matchup />} />
           <Route path="/studio" element={<Studio />} />
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/reports" element={<WeeklyReports />} />

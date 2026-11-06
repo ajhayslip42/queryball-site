@@ -171,10 +171,10 @@ function Usage() {
     panels={[{ rows: q.data ?? [], categoryKey: 'cat', short: true, metrics: defs.map((d, i) => ({ key: d.key, label: d.label, fmt: F[d.fmt], type: autoType(d.fmt, i) })) }]} />
 }
 const FANTASY_DEFS: MDef[] = [
-  { key: 'ppr', label: 'PPR (total)', expr: 'round(sum(fantasy_points_ppr),1)', f: 'd1' },
-  { key: 'ppg', label: 'PPR / Gm', expr: 'round(sum(fantasy_points_ppr)*1.0/count(*),1)', f: 'd1' },
-  { key: 'std', label: 'Standard (total)', expr: 'round(sum(fantasy_points),1)', f: 'd1' },
-  { key: 'stdg', label: 'Standard / Gm', expr: 'round(sum(fantasy_points)*1.0/count(*),1)', f: 'd1' },
+  { key: 'ppr', label: 'Fantasy (total)', expr: 'round(sum(fantasy_points_ppr),1)', f: 'd1' },
+  { key: 'ppg', label: 'Fantasy / Gm', expr: 'round(sum(fantasy_points_ppr)*1.0/count(*),1)', f: 'd1' },
+  { key: 'std', label: 'No-PPR (total)', expr: 'round(sum(fantasy_points),1)', f: 'd1' },
+  { key: 'stdg', label: 'No-PPR / Gm', expr: 'round(sum(fantasy_points)*1.0/count(*),1)', f: 'd1' },
   { key: 'td', label: 'Total TDs', expr: '(sum(passing_tds)+sum(rushing_tds)+sum(receiving_tds))::int', f: 'int' },
   { key: 'fd', label: 'Total 1st Downs', expr: '(sum(passing_first_downs)+sum(rushing_first_downs)+sum(receiving_first_downs))::int', f: 'int' },
   { key: 'yds', label: 'Total Yards', expr: '(sum(passing_yards)+sum(rushing_yards)+sum(receiving_yards))::int', f: 'int' },
@@ -215,7 +215,7 @@ function PlayerReport({ kind }: { kind: Kind }) {
       panels={[{ rows: q.data ?? [], categoryKey: 'cat', short: true, metrics: metricsOf(defs) }]} />
   )
   if (!fantasy) return body
-  return <div className="space-y-4"><FantasyBanner label="Fantasy Leaders" headline="Volume, efficiency, floor and ceiling in one view." body="PPR and standard totals plus per-game rates, with each player's worst and best game so you can separate the steady from the spiky. Set position and slice in the rail." />{body}</div>
+  return <div className="space-y-4"><FantasyBanner label="Fantasy Leaders" headline="Volume, efficiency, floor and ceiling in one view." body="Totals and per-game rates under your scoring setting (change it in the rail), with each player's worst and best game so you can separate the steady from the spiky." />{body}</div>
 }
 
 /* Report #2 — packed table (position-aware, with team) */

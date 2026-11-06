@@ -15,6 +15,7 @@ import type {
 import { DISTANCE_LABELS, SCORE_LABELS, DEPTH_LABELS, PASSDIR_LABELS, RUNDIR_LABELS, ZONE_LABELS, THRESH_LABELS, thresholdsForPositions } from '@/lib/slicers'
 import { TEAMS, POSITIONS } from '@/lib/nfl'
 import PlayerPicker from '@/components/PlayerPicker'
+import ScoringPanel from '@/components/ScoringPanel'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { ChevronDown, SlidersHorizontal, X, RotateCcw, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import clsx from 'clsx'
@@ -335,6 +336,10 @@ export default function SlicerPanel({ groups, showPlayerPicker = false }: {
               <p className="text-[10px] text-muted mt-1.5 leading-snug">Keeps only players whose season total in the current slice falls in range — e.g. receivers with 40+ targets.</p>
             </GroupSection>
           )}
+
+          <GroupSection title="Scoring" defaultOpen={false}>
+            <ScoringPanel compact />
+          </GroupSection>
 
           <button type="button" onClick={() => setDrawerOpen(true)}
             className="w-full flex items-center justify-center gap-2 qcard px-3 py-2.5 text-xs font-medium hover:border-accent hover:text-accent2 transition-colors">

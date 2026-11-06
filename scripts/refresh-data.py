@@ -24,7 +24,7 @@ seasons of PBP. Widen --pbp-years when you want deeper situational history.
 
 Other flags:
     --output public/data          where the parquet files are written
-    --skip pbp,weekly,players,games   skip steps you don't need this run
+    --skip pbp,weekly,players,games,snaps   skip steps you don't need this run
     --cache-dir .cache/nflverse   raw nflverse files cached between runs
 """
 
@@ -202,13 +202,45 @@ def fetch_players() -> pd.DataFrame:
     return pl[keep] if keep else pl
 
 
+NFLVERSE = "https://github.com/nflverse/nflverse-data/releases/download"
+
+
 def fetch_games(years: list[int]) -> pd.DataFrame:
-    print("  ↓ schedules / game results")
+    """Schedules + results, straight from the nflverse release asset.
+
+    This file includes the *current* season's future games (with spreads,
+    totals, kickoff times and starting QBs), which the Matchup page needs to
+    find each player's next opponent. nfl_data_py's import_schedules only
+    returned seasons it was asked for, and the default year range used to stop
+    at the previous season — that is why games.parquet had no current-season rows.
+    """
+    print("  ↓ schedules / game results (nflverse schedules release)")
     try:
-        return _nfl().import_schedules(years)
+        df = pd.read_parquet(f"{NFLVERSE}/schedules/games.parquet")
+        return df[df["season"].isin(years)]
     except Exception as e:
         print(f"    !! schedules failed: {e}")
         return pd.DataFrame()
+
+
+def fetch_snaps(years: list[int]) -> pd.DataFrame:
+    """Offensive snap counts per player per game (nflverse snap_counts).
+
+    Used by the Matchup page for snap %. ~150 KB for four seasons.
+    """
+    print("  ↓ snap counts")
+    frames = []
+    for y in years:
+        try:
+            df = pd.read_parquet(f"{NFLVERSE}/snap_counts/snap_counts_{y}.parquet")
+            df = df[df["offense_snaps"] > 0][
+                ["season", "week", "game_id", "game_type", "player", "position", "team", "opponent", "offense_snaps", "offense_pct"]
+            ]
+            frames.append(df)
+            print(f"    {y}: {len(df):,} rows")
+        except Exception as e:
+            print(f"    !! snap counts {y} failed: {e}")
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
 def write_parquet(df: pd.DataFrame, out: Path, name: str):
@@ -226,10 +258,10 @@ def write_parquet(df: pd.DataFrame, out: Path, name: str):
 
 def main():
     p = argparse.ArgumentParser(description="QueryBall data refresh")
-    p.add_argument("--years", default="2015-2025",
-                   help="Seasons for weekly/players/games (default 2015-2025)")
-    p.add_argument("--pbp-years", default="2023-2025",
-                   help="Seasons for play-by-play — keep this narrow (default 2023-2025)")
+    p.add_argument("--years", default="2015-2026",
+                   help="Seasons for weekly/players/games (default 2015-2026 — keep the upper bound on the current season)")
+    p.add_argument("--pbp-years", default="2023-2026",
+                   help="Seasons for play-by-play and snap counts — keep this narrow (default 2023-2026)")
     p.add_argument("--pbp-csv-dir", default="",
                    help="Folder of existing play_by_play_{year}.csv files to reuse "
                         "instead of downloading (e.g. your local nflverse dump)")
@@ -253,6 +285,8 @@ def main():
         sizes["players"] = write_parquet(fetch_players(), output, "players")
     if "games" not in skip:
         sizes["games"] = write_parquet(fetch_games(years), output, "games")
+    if "snaps" not in skip:
+        sizes["snaps"] = write_parquet(fetch_snaps(pbp_years), output, "snaps")
     if "pbp" not in skip:
         csv_dir = Path(args.pbp_csv_dir).resolve() if args.pbp_csv_dir else None
         pbp_sizes = fetch_and_write_pbp(pbp_years, cache, output, csv_dir)
@@ -262,7 +296,7 @@ def main():
     print("\nDone.\n")
 
     # Explicit checklist of what landed in the output folder.
-    expected = ["player_week.parquet", "players.parquet", "games.parquet"]
+    expected = ["player_week.parquet", "players.parquet", "games.parquet", "snaps.parquet"]
     print("File checklist (in {}):".format(output))
     for name in expected:
         ok = (output / name).exists()

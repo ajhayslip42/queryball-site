@@ -8,6 +8,7 @@
 import type { ReactNode } from 'react'
 import { useSlicers } from '@/lib/slicers'
 import { emptyHint } from '@/lib/slicerSql'
+import { useScoring, scoringLabel } from '@/lib/scoring'
 
 /** A small stat cell — label above, value below, optional trend arrow. */
 export function Cell({ label, value, trend, small = false }: {
@@ -37,6 +38,7 @@ export function FantasyBanner({ label, headline, body }: {
   headline: string
   body: ReactNode
 }) {
+  const [scoring] = useScoring()
   return (
     <div
       className="qcard p-5"
@@ -45,7 +47,7 @@ export function FantasyBanner({ label, headline, body }: {
         borderLeft: '3px solid #2A3B47',
       }}
     >
-      <p className="eyebrow text-accent2">{label}</p>
+      <p className="eyebrow text-accent2">{label} <span className="text-muted2 normal-case tracking-normal">· scoring: {scoringLabel(scoring)}</span></p>
       <h4 className="font-display text-3xl mt-1 leading-tight">{headline}</h4>
       <p className="text-sm text-muted mt-2 max-w-2xl leading-relaxed">{body}</p>
     </div>

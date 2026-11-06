@@ -21,6 +21,7 @@ import FilterSheet from '@/components/mobile/FilterSheet'
 import { useActiveBadges } from '@/components/mobile/useActiveBadges'
 import { BarTile, PALETTE } from '@/components/charts/Charts'
 import { ContextStamp, ShareButton } from '@/components/mobile/Share'
+import { useScoring } from '@/lib/scoring'
 
 const STUDIO_GROUPS = ['season', 'week', 'position', 'team', 'opponent', 'homeAway', 'down', 'distance', 'score', 'zone', 'qtr', 'passDepth', 'runDir', 'pressure', 'shotgun', 'playType'] as const
 
@@ -28,6 +29,7 @@ export default function Studio() {
   const [search, setSearch] = useSearchParams()
   const st = useMemo(() => studioFromParams(search), [search])
   const { slicers } = useSlicers()
+  const [scoring] = useScoring()
   const setSt = (patch: Partial<StudioState>) => setSearch(studioToParams({ ...st, ...patch }, new URLSearchParams(search)), { replace: true })
 
   const [sheet, setSheet] = useState(false)
@@ -37,7 +39,7 @@ export default function Studio() {
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
 
-  const sql = useMemo(() => buildStudioSql(st, slicers), [st, slicers])
+  const sql = useMemo(() => buildStudioSql(st, slicers), [st, slicers, scoring])
   const q = useQuery<any>(sql, [sql])
   const rows = q.data ?? []
   const { badges } = useActiveBadges()

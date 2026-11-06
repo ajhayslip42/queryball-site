@@ -21,6 +21,8 @@ import PlayerPicker from '@/components/PlayerPicker'
 import { useMatchCount } from '@/lib/useMatchCount'
 import SituationsPanel from './SituationsPanel'
 import AskBox from './AskBox'
+import ScoringPanel from '@/components/ScoringPanel'
+import { useScoring, scoringLabel } from '@/lib/scoring'
 import { FieldPicker, DownDistanceGrid, ScorePicker, ClockPicker, DepthPicker, RunDirPicker, TriRow, Why } from './Pickers'
 
 const SEASONS = [2023, 2024, 2025, 2026]
@@ -28,19 +30,22 @@ const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1)
 const PLAYOFF: [number, string][] = [[19, 'WC'], [20, 'DV'], [21, 'CC'], [22, 'SB']]
 const MODE_KEY = 'qb.filterMode'
 
-export default function FilterSheet({ open, onClose, groups, showPlayerPicker = false, initialTab = 'filters' }: {
+export default function FilterSheet({ open, onClose, groups, showPlayerPicker = false, initialTab = 'filters', initialGroup }: {
   open: boolean
   onClose: () => void
   groups: readonly Group[]
   showPlayerPicker?: boolean
   initialTab?: 'filters' | 'ask' | 'situations'
+  /** Open straight to a Pro group, e.g. 'scoring' (used by the Matchup page). */
+  initialGroup?: 'scoring'
 }) {
   const { slicers, update, reset } = useSlicers()
+  const [scoring] = useScoring()
   const [mode, setMode] = useState<'simple' | 'pro'>(() => {
     try { return (localStorage.getItem(MODE_KEY) as 'simple' | 'pro') || 'simple' } catch { return 'simple' }
   })
   const [tab, setTab] = useState<'filters' | 'ask' | 'situations'>(initialTab)
-  useEffect(() => { if (open) setTab(initialTab) }, [open, initialTab])
+  useEffect(() => { if (open) { setTab(initialTab); if (initialGroup) setMode('pro') } }, [open, initialTab, initialGroup])
   useEffect(() => { try { localStorage.setItem(MODE_KEY, mode) } catch { /* private mode */ } }, [mode])
   useEffect(() => {
     if (!open) return
@@ -136,6 +141,9 @@ export default function FilterSheet({ open, onClose, groups, showPlayerPicker = 
               <Row label="Situations" hint="one tap, several filters">
                 <SituationsPanel mode="compact" />
               </Row>
+              <Row label="Scoring" hint={scoringLabel(scoring)}>
+                <ScoringPanel compact />
+              </Row>
               <button type="button" onClick={() => setMode('pro')}
                 className="w-full rounded-lg border border-dashed border-accent px-3 py-2.5 text-[12.5px] font-semibold text-accent2">
                 Build your own situation →
@@ -215,6 +223,9 @@ export default function FilterSheet({ open, onClose, groups, showPlayerPicker = 
                   <Why>Keeps only players whose season total in this slice falls in range — e.g. receivers with 40+ targets.</Why>
                 </Acc>
               )}
+              <Acc title="Scoring" count={scoringLabel(scoring) === 'PPR · 4-pt pass TD' ? 0 : 1} open={initialGroup === 'scoring'}>
+                <ScoringPanel compact />
+              </Acc>
               <Acc title="Weather & venue" count={slicers.roof.length + slicers.surface.length}>
                 <Sub label="Roof">
                   <div className="grid grid-cols-4 gap-1">

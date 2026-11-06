@@ -6,7 +6,7 @@
  * most recent team and position. One small cached query at mount.
  */
 import { useMemo } from 'react'
-import { useQuery } from './useQuery'
+import { useQuery } from '@/lib/useQuery'
 import type { Player, Position } from './players'
 
 // Latest team/position for each skill player who has weekly stats. Also joins

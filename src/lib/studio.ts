@@ -14,6 +14,7 @@
  */
 import type { Slicers } from './slicers'
 import { playsWhere } from './slicerSql'
+import { getScoring } from './scoring'
 
 export type DimKey =
   | 'player' | 'team' | 'position' | 'season' | 'week' | 'opponent'
@@ -95,8 +96,8 @@ export const METRICS: MetricDef[] = [
   { key: 'touches', label: 'Touches',    group: 'combined', expr: 'sum(c_rec)+sum(r_car)', fmt: 'int', count: true },
   { key: 'tot_yds', label: 'Scrimmage yds', group: 'combined', expr: 'sum(c_yds)+sum(r_yds)', fmt: 'int', count: true },
   { key: 'tot_td',  label: 'Total TD',   group: 'combined', expr: 'sum(p_td)+sum(r_td)+sum(c_td)', fmt: 'int', count: true },
-  { key: 'fp',      label: 'Fantasy (std)', group: 'combined', expr: 'sum(p_yds)*0.04+sum(p_td)*4-sum(p_int)*2+sum(r_yds)*0.1+sum(r_td)*6+sum(c_yds)*0.1+sum(c_td)*6', fmt: 'd1', count: true },
-  { key: 'ppr',     label: 'Fantasy (PPR)', group: 'combined', expr: 'sum(p_yds)*0.04+sum(p_td)*4-sum(p_int)*2+sum(r_yds)*0.1+sum(r_td)*6+sum(c_yds)*0.1+sum(c_td)*6+sum(c_rec)', fmt: 'd1', count: true },
+  { key: 'fp',      label: 'Fantasy (no PPR)', group: 'combined', expr: '__FANTASY_STD__', fmt: 'd1', count: true, blurb: 'Your scoring, receptions worth 0' },
+  { key: 'ppr',     label: 'Fantasy pts', group: 'combined', expr: '__FANTASY__', fmt: 'd1', count: true, blurb: 'Follows the Scoring setting' },
 ]
 export const METRIC_BY_KEY: Record<string, MetricDef> = Object.fromEntries(METRICS.map(m => [m.key, m]))
 
@@ -145,8 +146,12 @@ export function buildStudioSql(st: StudioState, s: Slicers): string {
   const mets = st.metrics.map(k => METRIC_BY_KEY[k]).filter(Boolean)
   if (!mets.length) return 'SELECT 1 WHERE false'
   const dimSel = dims.map(d => `${d.expr} AS "${d.key}"`)
+  const sc = getScoring()
+  const fantasy = (rec: number) => `sum(p_yds)*${1 / sc.passYdPt} + sum(p_td)*${sc.passTd} + sum(p_int)*${sc.int} + (sum(r_yds)+sum(c_yds))*${1 / sc.rushRecYdPt} + (sum(r_td)+sum(c_td))*6 + sum(c_rec)*${rec}` +
+    (rec && sc.tePrem ? ` + sum(c_rec) * (CASE WHEN pl.position = 'TE' THEN ${sc.tePrem} ELSE 0 END)` : '')
   const metSel = mets.map(m => {
-    const e = st.perGame && m.count ? `(${m.expr})*1.0/nullif(count(DISTINCT ev.game_id),0)` : m.expr
+    const expr = m.expr === '__FANTASY__' ? fantasy(sc.rec) : m.expr === '__FANTASY_STD__' ? fantasy(0) : m.expr
+    const e = st.perGame && m.count ? `(${expr})*1.0/nullif(count(DISTINCT ev.game_id),0)` : expr
     return `round(${e}, 2) AS "${m.key}"`
   })
   const where: string[] = []

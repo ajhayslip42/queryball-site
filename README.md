@@ -5,7 +5,9 @@
 QueryBall is a custom NFL stats site: six rollup decks with five reports each,
 under 47+ slicers, with a dedicated fantasy tab on every deck, a weekly
 projections page, a Studio (pick rows and metrics, get a table), a query
-gallery, and the weekly team report PDFs. On phones the decks use a
+gallery, a fantasy Matchup page (three players, this week's game, the defense
+they face read for their position), and the weekly team report PDFs. Fantasy
+points everywhere follow one scoring setting (PPR / half / standard / custom). On phones the decks use a
 report-first shell: a sticky context bar, a bottom filter sheet with Simple/Pro
 modes and one-tap Situations, a contents screen per deck, and swipe-to-move
 between reports. Desktop keeps the slicer rail. Built on Vite + React + DuckDB-WASM so the entire stack runs
@@ -33,10 +35,11 @@ queryball-site/
 │   ├── logo.png            ← brand asset
 │   ├── favicon.png
 │   ├── data/               ← parquet files written by scripts/refresh-data.py
-│   │   ├── plays.parquet
+│   │   ├── plays_YYYY.parquet  ← one per season (plus plays_manifest.json)
 │   │   ├── player_week.parquet
 │   │   ├── players.parquet
-│   │   └── games.parquet
+│   │   ├── games.parquet       ← schedules incl. the current season's future games + Vegas lines
+│   │   └── snaps.parquet       ← offensive snap counts (Matchup page)
 │   └── projections.xlsx    ← drop your weekly model output here
 ├── src/
 │   ├── main.tsx
@@ -49,6 +52,8 @@ queryball-site/
 │   │   ├── studio.ts       ← Studio dimensions, metric library, SQL builder
 │   │   ├── reportMeta.ts   ← the question each report answers (mobile contents screen)
 │   │   ├── useMatchCount.ts← live "N plays match" for the filter sheet
+│   │   ├── scoring.ts      ← league scoring store (PPR/half/std/custom) every fantasy number follows
+│   │   ├── matchup.ts      ← Matchup SQL: next games, player weeks, defense profiles, metric rows
 │   │   ├── nfl.ts          ← team list, color tokens, formatters, headshot/logo URLs
 │   │   ├── db.ts           ← DuckDB-WASM wrapper
 │   │   ├── useQuery.ts
@@ -64,6 +69,7 @@ queryball-site/
 │   ├── pages/
 │   │   ├── Home.tsx
 │   │   ├── Articles.tsx, Article.tsx
+│   │   ├── Matchup.tsx               ← fantasy matchup comparison (3 players, this week's game, defense read)
 │   │   ├── Studio.tsx, Gallery.tsx   ← pivot builder + saved/curated queries
 │   │   ├── WeeklyReports.tsx         ← team report PDFs (reads public/reports/manifest.json)
 │   │   ├── Projections.tsx
@@ -95,7 +101,9 @@ queryball-site/
 |---|---|
 | Add a new article | Drop a `.md` file in `src/content/articles/`. Frontmatter: `title, date, tag, author, excerpt`. |
 | Update projections | Replace `public/projections.xlsx` with your latest model output. |
-| Refresh stats data | `python scripts/refresh-data.py` (writes parquet files into `public/data/`) |
+| Refresh stats data | `python scripts/refresh-data.py` (writes parquet files into `public/data/`, now including `snaps.parquet` and a current-season `games.parquet`) |
+| Change default fantasy scoring | Visitors set it under Scoring in the filter sheet / rail; the default preset is `DEFAULT_SCORING` in `src/lib/scoring.ts` |
+| Add a Matchup metric | Add a row to `CARD_ROWS` (player card) or `DEF_METRICS` (defense read) in `src/lib/matchup.ts`; the SQL in the same file must produce the column |
 | Publish weekly team PDFs | `python scripts/publish-reports.py <folder of PDFs>` then redeploy. Needs `pip install pymupdf` for compression. |
 | Add a curated Studio query | Build it in `/studio`, copy the link, paste the part after `?` into `src/content/gallery.json`. |
 | Add a Situation | Append to `SITUATIONS` in `src/lib/situations.ts`. |

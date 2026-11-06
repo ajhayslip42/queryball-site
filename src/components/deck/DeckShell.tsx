@@ -20,6 +20,7 @@ import FilterSheet from '@/components/mobile/FilterSheet'
 import SituationsPanel from '@/components/mobile/SituationsPanel'
 import { DeckContents, ReportPager } from '@/components/mobile/DeckContents'
 import { ContextStamp, ShareButton } from '@/components/mobile/Share'
+import { useScoring } from '@/lib/scoring'
 
 export type DeckTab = {
   id: string
@@ -47,6 +48,8 @@ export default function DeckShell({
 }) {
   const [activeId, setActiveId] = useState(tabs[0]?.id)
   const active = tabs.find(t => t.id === activeId) ?? tabs[0]
+  // Re-render when the scoring setting changes so every fantasy query rebuilds.
+  useScoring()
 
   /* ------------------------------------------------------------------
    * Phone layout (below lg). The desktop layout below is untouched: the

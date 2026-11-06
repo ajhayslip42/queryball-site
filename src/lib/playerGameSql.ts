@@ -24,8 +24,18 @@
  */
 import type { Slicers } from './slicers'
 import { playsWhere } from './slicerSql'
+import { getScoring } from './scoring'
 
 const esc = (v: string) => v.replace(/'/g, "''")
+
+/** Scoring formula over the per-game event sums inside playerGameLog. */
+function evFantasy(recOverride?: number): string {
+  const sc = getScoring()
+  const rec = recOverride ?? sc.rec
+  const te = recOverride == null && sc.tePrem ? ` + sum(c_rec) * (CASE WHEN pl.position = 'TE' THEN ${sc.tePrem} ELSE 0 END)` : ''
+  const bonus = sc.bonus ? ` + (CASE WHEN sum(r_yds) >= 100 THEN 3 ELSE 0 END) + (CASE WHEN sum(c_yds) >= 100 THEN 3 ELSE 0 END) + (CASE WHEN sum(p_yds) >= 300 THEN 3 ELSE 0 END)` : ''
+  return `sum(p_yds)*${1 / sc.passYdPt} + sum(p_td)*${sc.passTd} + sum(p_int)*${sc.int} + (sum(r_yds)+sum(c_yds))*${1 / sc.rushRecYdPt} + (sum(r_td)+sum(c_td))*6 + sum(c_rec)*${rec}${te}${bonus}`
+}
 
 export function playerGameLog(s: Slicers, opts?: { playerId?: string }): string {
   const W = playsWhere(s)
@@ -72,8 +82,11 @@ export function playerGameLog(s: Slicers, opts?: { playerId?: string }): string 
       sum(COALESCE(c_inc,0))     incompletions,
       -- Opportunity = targets + carries (RB-critical, but computed for everyone).
       (sum(c_tgt)+sum(r_car)) opportunities,
-      round(sum(p_yds)*0.04+sum(p_td)*4-sum(p_int)*2+sum(r_yds)*0.1+sum(r_td)*6+sum(c_yds)*0.1+sum(c_td)*6,2) fantasy_points,
-      round(sum(p_yds)*0.04+sum(p_td)*4-sum(p_int)*2+sum(r_yds)*0.1+sum(r_td)*6+sum(c_yds)*0.1+sum(c_td)*6+sum(c_rec),2) fantasy_points_ppr
+      -- Fantasy points follow the site-wide scoring setting (lib/scoring.ts):
+      --   fantasy_points_ppr = the league's scoring (receptions included as configured)
+      --   fantasy_points     = the same scoring with receptions worth 0 ("standard")
+      round(${evFantasy(0)},2) fantasy_points,
+      round(${evFantasy()},2) fantasy_points_ppr
     FROM ev JOIN players pl ON pl.gsis_id = ev.pid
     GROUP BY ev.pid, pl.display_name, pl.position, ev.season, ev.week, ev.season_type, ev.team, ev.game_id
   )`

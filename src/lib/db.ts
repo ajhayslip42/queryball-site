@@ -10,7 +10,8 @@
  * Tables exposed:
  *   player_week  — weekly tidy player stats (the workhorse)
  *   players      — roster metadata (gsis_id, position, headshot, ...)
- *   games        — schedules, scores, weather, spreads
+ *   games        — schedules (incl. the current season's future games), scores, weather, spreads
+ *   snaps        — offensive snap counts per player per game (Matchup page)
  *   plays        — play-by-play, recent seasons, slimmed columns
  *
  * To refresh: run scripts/refresh-data.py, drop the new parquet into
@@ -73,6 +74,12 @@ async function getDb(): Promise<any> {
           CREATE VIEW IF NOT EXISTS games AS
             SELECT * FROM read_parquet('${dataUrl('games.parquet', version)}');
         `)
+        // Snap counts (nflverse snap_counts) — optional; older data folders may not have it.
+        try {
+          await conn.query(`CREATE VIEW IF NOT EXISTS snaps AS SELECT * FROM read_parquet('${dataUrl('snaps.parquet', version)}');`)
+        } catch (e) {
+          console.warn('snaps.parquet not found — snap % will be blank on the Matchup page. Run scripts/refresh-data.py.', e)
+        }
         // Play-by-play — union whatever seasons the manifest lists.
         if (seasons.length) {
           const union = seasons

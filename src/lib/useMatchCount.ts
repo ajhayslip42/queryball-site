@@ -6,7 +6,7 @@
  * feedback is what tells a casual user that a filter actually did something —
  * or that they've sliced themselves down to nothing.
  */
-import { useQuery } from './useQuery'
+import { useQuery } from '@/lib/useQuery'
 import { playsWhere } from './slicerSql'
 import type { Slicers } from './slicers'
 

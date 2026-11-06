@@ -747,8 +747,8 @@ function useSplit(player: Player, catExpr: string, defs: MDef[], extra = '') {
 function Fantasy({ player }: { player: Player }) {
   const { slicers } = useSlicers()
   const defs: MDef[] = [
-    { key: 'ppr', label: 'PPR Pts', expr: 'round(fantasy_points_ppr,1)', f: 'd1' },
-    { key: 'std', label: 'Standard Pts', expr: 'round(fantasy_points,1)', f: 'd1' },
+    { key: 'ppr', label: 'Fantasy Pts', expr: 'round(fantasy_points_ppr,1)', f: 'd1' },
+    { key: 'std', label: 'No-PPR Pts', expr: 'round(fantasy_points,1)', f: 'd1' },
     { key: 'passpt', label: 'Passing Pts', expr: 'round(passing_yards*0.04+passing_tds*4-interceptions*2,1)', f: 'd1' },
     { key: 'rushpt', label: 'Rushing Pts', expr: 'round(rushing_yards*0.1+rushing_tds*6,1)', f: 'd1' },
     { key: 'recpt', label: 'Receiving Pts', expr: 'round(receiving_yards*0.1+receiving_tds*6+receptions,1)', f: 'd1' },
