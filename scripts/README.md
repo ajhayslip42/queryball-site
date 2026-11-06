@@ -2,7 +2,42 @@
 
 Operational scripts for the data pipeline.
 
-## refresh-data.py
+## nightly_refresh.py  ← the one that runs automatically
+
+Every morning at 4 AM Central, the GitHub Actions workflow in
+`.github/workflows/nightly-refresh.yml` runs this script on GitHub's servers,
+commits any changed files in `public/data/`, and deploys the site to Cloudflare.
+Nothing needs to be running at home. Setup steps are in the comments at the top
+of that workflow file (two Cloudflare secrets, then press "Run workflow" once).
+
+It pulls the nflverse release files directly (no `nfl_data_py`) and writes:
+
+| File | What's in it |
+|---|---|
+| `plays_<season>.parquet` | Play-by-play, REG + POST, one file per season (2023+) |
+| `player_week.parquet` | Weekly player stats, 2015+ (nflverse `stats_player_week_*`) |
+| `players.parquet` | Roster metadata and headshots |
+| `games.parquet` | Schedules, scores, lines, roof/surface/weather — includes future games |
+| `snaps.parquet` | Snap counts, 2023+ |
+| `plays_manifest.json` | Seasons list + a `version` that changes only when data changes (cache-buster) |
+
+A file is only rewritten when its bytes actually changed, nothing is ever
+deleted, and a failed download leaves the existing file untouched.
+
+To run it by hand (same result as the nightly job, minus the commit/deploy):
+
+```bash
+pip install pandas pyarrow
+python scripts/nightly_refresh.py            # auto-detects the current season
+python scripts/nightly_refresh.py --dry-run  # just report what would change
+```
+
+## refresh-data.py  (legacy)
+
+> Kept for reference. Its weekly-stats step depends on `nfl_data_py`, which
+> still reads the old `player_stats_<year>` files that nflverse stopped
+> updating after 2024 — so it cannot produce 2025+ weekly stats. Use
+> `nightly_refresh.py` instead.
 
 Pulls play-by-play, weekly player stats, rosters, and schedules from the
 [nflverse](https://github.com/nflverse) releases and writes parquet files

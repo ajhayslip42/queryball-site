@@ -1,0 +1,123 @@
+# ============================================================================
+#  QueryBall — nightly nflverse refresh + Cloudflare deploy
+#  Runs on GitHub's servers every morning at 4 AM Central. Your PC can be off.
+# ----------------------------------------------------------------------------
+#  WHAT IT DOES
+#    1. python scripts/nightly_refresh.py  → pulls the current nflverse files and
+#       rewrites public/data/*.parquet + plays_manifest.json ONLY if data changed
+#    2. commits + pushes that change to this branch  (commit: "data: nightly refresh …")
+#    3. npm run deploy  → builds the site and deploys it to Cloudflare Workers
+#    If nothing changed (off-season, bye-heavy Tuesday), steps 2–3 are skipped.
+#
+#  ONE-TIME SETUP  (~5 minutes, all in a browser)
+#    a) Cloudflare dashboard → profile icon (top right) → My Profile → API Tokens
+#       → Create Token → template "Edit Cloudflare Workers" → Continue → Create.
+#       Copy the token (shown once).
+#    b) Cloudflare dashboard → Workers & Pages → the right-hand column shows
+#       "Account ID". Copy it.
+#    c) GitHub → this repo → Settings → Secrets and variables → Actions
+#       → New repository secret, twice:
+#           CLOUDFLARE_API_TOKEN   = token from (a)
+#           CLOUDFLARE_ACCOUNT_ID  = id from (b)
+#    d) GitHub → Actions tab → "Nightly data refresh" → Run workflow → Run.
+#       Watch it go green. That's it — it now runs itself every morning.
+#
+#  Without the two secrets the job still refreshes + pushes the data, and
+#  Cloudflare's git integration does the deploy (when it feels like it). With
+#  the secrets, the deploy happens right here and no longer depends on that.
+#
+#  If a run ever fails GitHub emails you; the "Run workflow" button re-runs it.
+# ============================================================================
+name: Nightly data refresh
+
+on:
+  schedule:
+    # GitHub cron is UTC with no daylight-saving awareness. 4 AM Central is
+    # 09:00 UTC in summer (CDT) and 10:00 UTC in winter (CST), so both fire and
+    # the `gate` job lets through only the one that lands in the 4–5 AM hour.
+    # (In summer the 5 AM one also passes — it finds nothing new and stops,
+    # or quietly acts as a retry if the 4 AM run hit a hiccup.)
+    - cron: '5 9,10 * * *'
+  workflow_dispatch: {}   # adds the manual "Run workflow" button
+
+permissions:
+  contents: write         # needed to push the data commit
+
+concurrency:
+  group: nightly-refresh
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+    steps:
+      - id: check
+        run: |
+          HOUR=$(TZ=America/Chicago date +%H)
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$HOUR" = "04" ] || [ "$HOUR" = "05" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+            echo "Chicago time ${HOUR}:xx — running."
+          else
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            echo "Chicago time ${HOUR}:xx — not the 4 AM slot, skipping."
+          fi
+
+  refresh:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check out the site
+        uses: actions/checkout@v4
+        with:
+          # Only the folders the build needs. Skips WeeklyReportQueryball/ (~750 MB)
+          # and .cache/ (~200 MB) so the checkout takes seconds, not minutes.
+          # Root-level files (package.json, wrangler.jsonc, …) are always included.
+          sparse-checkout: |
+            public
+            scripts
+            src
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python packages
+        run: pip install --quiet pandas pyarrow
+
+      - name: Pull fresh nflverse data
+        id: refresh
+        run: python scripts/nightly_refresh.py
+
+      - name: Commit and push the new data
+        if: steps.refresh.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data
+          git commit -m "data: nightly refresh ${{ steps.refresh.outputs.version }}" \
+                     -m "files: ${{ steps.refresh.outputs.files }}"
+          git push
+
+      - name: Set up Node
+        if: steps.refresh.outputs.changed == 'true' && env.CLOUDFLARE_API_TOKEN != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Build and deploy to Cloudflare
+        if: steps.refresh.outputs.changed == 'true' && env.CLOUDFLARE_API_TOKEN != ''
+        run: |
+          npm ci --no-audit --no-fund
+          npm run deploy
+
+      - name: Nothing new today
+        if: steps.refresh.outputs.changed != 'true'
+        run: echo "nflverse had no new data — nothing committed or deployed."
