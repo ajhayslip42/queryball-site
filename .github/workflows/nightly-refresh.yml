@@ -109,7 +109,7 @@ jobs:
         if: steps.refresh.outputs.changed == 'true' && env.CLOUDFLARE_API_TOKEN != ''
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Build and deploy to Cloudflare
