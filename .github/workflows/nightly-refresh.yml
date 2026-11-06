@@ -106,14 +106,14 @@ jobs:
           git push
 
       - name: Set up Node
-        if: steps.refresh.outputs.changed == 'true' && env.CLOUDFLARE_API_TOKEN != ''
+        if: (steps.refresh.outputs.changed == 'true' || github.event_name == 'workflow_dispatch') && env.CLOUDFLARE_API_TOKEN != ''
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Build and deploy to Cloudflare
-        if: steps.refresh.outputs.changed == 'true' && env.CLOUDFLARE_API_TOKEN != ''
+        if: (steps.refresh.outputs.changed == 'true' || github.event_name == 'workflow_dispatch') && env.CLOUDFLARE_API_TOKEN != ''
         run: |
           npm ci --no-audit --no-fund
           npm run deploy
