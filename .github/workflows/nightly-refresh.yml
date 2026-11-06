@@ -7,6 +7,9 @@
 #       rewrites public/data/*.parquet + plays_manifest.json ONLY if data changed
 #    2. commits + pushes that change to this branch  (commit: "data: nightly refresh …")
 #    3. npm run deploy  → builds the site and deploys it to Cloudflare Workers
+#    A push to main (your code changes) also runs this and always deploys.
+#    Cloudflare's own git builder must stay DISCONNECTED — it was deploying
+#    builds with stale data on top of this one.
 #    If nothing changed (off-season, bye-heavy Tuesday), steps 2–3 are skipped.
 #
 #  ONE-TIME SETUP  (~5 minutes, all in a browser)
@@ -39,6 +42,8 @@ on:
     # or quietly acts as a retry if the 4 AM run hit a hiccup.)
     - cron: '5 9,10 * * *'
   workflow_dispatch: {}   # adds the manual "Run workflow" button
+  push:
+    branches: [main]     # any code push to main also builds + deploys (replaces Cloudflare's git builder)
 
 permissions:
   contents: write         # needed to push the data commit
@@ -106,18 +111,18 @@ jobs:
           git push
 
       - name: Set up Node
-        if: (steps.refresh.outputs.changed == 'true' || github.event_name == 'workflow_dispatch') && env.CLOUDFLARE_API_TOKEN != ''
+        if: (steps.refresh.outputs.changed == 'true' || github.event_name != 'schedule') && env.CLOUDFLARE_API_TOKEN != ''
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Build and deploy to Cloudflare
-        if: (steps.refresh.outputs.changed == 'true' || github.event_name == 'workflow_dispatch') && env.CLOUDFLARE_API_TOKEN != ''
+        if: (steps.refresh.outputs.changed == 'true' || github.event_name != 'schedule') && env.CLOUDFLARE_API_TOKEN != ''
         run: |
           npm ci --no-audit --no-fund
           npm run deploy
 
       - name: Nothing new today
-        if: steps.refresh.outputs.changed != 'true'
+        if: steps.refresh.outputs.changed != 'true' && github.event_name == 'schedule'
         run: echo "nflverse had no new data — nothing committed or deployed."
