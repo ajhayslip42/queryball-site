@@ -1,6 +1,6 @@
 # ============================================================================
 #  QueryBall — nightly nflverse refresh + Cloudflare deploy
-#  Runs on GitHub's servers every morning at 4 AM Central. Your PC can be off.
+#  Runs on GitHub's servers several times every morning (Central). Your PC can be off.
 # ----------------------------------------------------------------------------
 #  WHAT IT DOES
 #    1. python scripts/nightly_refresh.py  → pulls the current nflverse files and
@@ -32,46 +32,29 @@
 #  If a run ever fails GitHub emails you; the "Run workflow" button re-runs it.
 # ============================================================================
 name: Nightly data refresh
-
+ 
 on:
   schedule:
-    # GitHub cron is UTC with no daylight-saving awareness. 4 AM Central is
-    # 09:00 UTC in summer (CDT) and 10:00 UTC in winter (CST), so both fire and
-    # the `gate` job lets through only the one that lands in the 4–5 AM hour.
-    # (In summer the 5 AM one also passes — it finds nothing new and stops,
-    # or quietly acts as a retry if the 4 AM run hit a hiccup.)
-    - cron: '5 9,10 * * *'
+    # GitHub's scheduler is not punctual: in the first week it fired 5–7 hours
+    # late, and a strict "only at 4 AM" check then threw those runs away. So the
+    # job now gets several tries every morning (times are UTC; Central = UTC-6
+    # in winter, UTC-5 in summer). Each try is cheap: if nflverse has nothing
+    # new it ends in ~40 s and deploys nothing. Whichever try sees new data
+    # commits + deploys it; the later ones that day are no-ops.
+    - cron: '17 7,9,11,13 * * *'   # 1:17, 3:17, 5:17, 7:17 AM Central (winter)
   workflow_dispatch: {}   # adds the manual "Run workflow" button
   push:
     branches: [main]     # any code push to main also builds + deploys (replaces Cloudflare's git builder)
-
+ 
 permissions:
   contents: write         # needed to push the data commit
-
+ 
 concurrency:
   group: nightly-refresh
   cancel-in-progress: false
-
+ 
 jobs:
-  gate:
-    runs-on: ubuntu-latest
-    outputs:
-      go: ${{ steps.check.outputs.go }}
-    steps:
-      - id: check
-        run: |
-          HOUR=$(TZ=America/Chicago date +%H)
-          if [ "${{ github.event_name }}" != "schedule" ] || [ "$HOUR" = "04" ] || [ "$HOUR" = "05" ]; then
-            echo "go=true" >> "$GITHUB_OUTPUT"
-            echo "Chicago time ${HOUR}:xx — running."
-          else
-            echo "go=false" >> "$GITHUB_OUTPUT"
-            echo "Chicago time ${HOUR}:xx — not the 4 AM slot, skipping."
-          fi
-
   refresh:
-    needs: gate
-    if: needs.gate.outputs.go == 'true'
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -87,19 +70,19 @@ jobs:
             public
             scripts
             src
-
+ 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
+ 
       - name: Install Python packages
         run: pip install --quiet pandas pyarrow
-
+ 
       - name: Pull fresh nflverse data
         id: refresh
         run: python scripts/nightly_refresh.py
-
+ 
       - name: Commit and push the new data
         if: steps.refresh.outputs.changed == 'true'
         run: |
@@ -109,20 +92,21 @@ jobs:
           git commit -m "data: nightly refresh ${{ steps.refresh.outputs.version }}" \
                      -m "files: ${{ steps.refresh.outputs.files }}"
           git push
-
+ 
       - name: Set up Node
         if: (steps.refresh.outputs.changed == 'true' || github.event_name != 'schedule') && env.CLOUDFLARE_API_TOKEN != ''
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
+ 
       - name: Build and deploy to Cloudflare
         if: (steps.refresh.outputs.changed == 'true' || github.event_name != 'schedule') && env.CLOUDFLARE_API_TOKEN != ''
         run: |
           npm ci --no-audit --no-fund
           npm run deploy
-
+ 
       - name: Nothing new today
         if: steps.refresh.outputs.changed != 'true' && github.event_name == 'schedule'
         run: echo "nflverse had no new data — nothing committed or deployed."
+ 
