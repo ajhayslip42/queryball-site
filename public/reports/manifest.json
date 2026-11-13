@@ -1,0 +1,580 @@
+{
+  "version": "20261113",
+  "seasons": [
+    {
+      "season": 2026,
+      "weeks": [
+        {
+          "week": 18,
+          "reports": [
+            {
+              "team": "ATL",
+              "name": "Atlanta Falcons",
+              "file": "/reports/2026/wk18/ATL.pdf",
+              "bytes": 7365316,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Atlanta Falcons - 2026 Wk18.pdf"
+            }
+          ]
+        },
+        {
+          "week": 9,
+          "reports": [
+            {
+              "team": "ARI",
+              "name": "Arizona Cardinals",
+              "file": "/reports/2026/wk9/ARI.pdf",
+              "bytes": 8690553,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Arizona Cardinals - 2026 Wk9.pdf"
+            },
+            {
+              "team": "ATL",
+              "name": "Atlanta Falcons",
+              "file": "/reports/2026/wk9/ATL.pdf",
+              "bytes": 8852340,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Atlanta Falcons - 2026 Wk9.pdf"
+            },
+            {
+              "team": "BAL",
+              "name": "Baltimore Ravens",
+              "file": "/reports/2026/wk9/BAL.pdf",
+              "bytes": 8761532,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Baltimore Ravens - 2026 Wk9.pdf"
+            },
+            {
+              "team": "BUF",
+              "name": "Buffalo Bills",
+              "file": "/reports/2026/wk9/BUF.pdf",
+              "bytes": 8697601,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Buffalo Bills - 2026 Wk9.pdf"
+            },
+            {
+              "team": "CAR",
+              "name": "Carolina Panthers",
+              "file": "/reports/2026/wk9/CAR.pdf",
+              "bytes": 8802032,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Carolina Panthers - 2026 Wk9.pdf"
+            },
+            {
+              "team": "CHI",
+              "name": "Chicago Bears",
+              "file": "/reports/2026/wk9/CHI.pdf",
+              "bytes": 8724280,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Chicago Bears - 2026 Wk9.pdf"
+            },
+            {
+              "team": "CIN",
+              "name": "Cincinnati Bengals",
+              "file": "/reports/2026/wk9/CIN.pdf",
+              "bytes": 8589156,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Cincinnati Bengals - 2026 Wk9.pdf"
+            },
+            {
+              "team": "CLE",
+              "name": "Cleveland Browns",
+              "file": "/reports/2026/wk9/CLE.pdf",
+              "bytes": 8824068,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Cleveland Browns - 2026 Wk9.pdf"
+            },
+            {
+              "team": "DAL",
+              "name": "Dallas Cowboys",
+              "file": "/reports/2026/wk9/DAL.pdf",
+              "bytes": 8704648,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Dallas Cowboys - 2026 Wk9.pdf"
+            },
+            {
+              "team": "DEN",
+              "name": "Denver Broncos",
+              "file": "/reports/2026/wk9/DEN.pdf",
+              "bytes": 8679122,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Denver Broncos - 2026 Wk9.pdf"
+            },
+            {
+              "team": "DET",
+              "name": "Detroit Lions",
+              "file": "/reports/2026/wk9/DET.pdf",
+              "bytes": 8707926,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Detroit Lions - 2026 Wk9.pdf"
+            },
+            {
+              "team": "GB",
+              "name": "Green Bay Packers",
+              "file": "/reports/2026/wk9/GB.pdf",
+              "bytes": 8760739,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Green Bay Packers - 2026 Wk9.pdf"
+            },
+            {
+              "team": "HOU",
+              "name": "Houston Texans",
+              "file": "/reports/2026/wk9/HOU.pdf",
+              "bytes": 8845266,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Houston Texans - 2026 Wk9.pdf"
+            },
+            {
+              "team": "IND",
+              "name": "Indianapolis Colts",
+              "file": "/reports/2026/wk9/IND.pdf",
+              "bytes": 8845758,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Indianapolis Colts - 2026 Wk9.pdf"
+            },
+            {
+              "team": "JAX",
+              "name": "Jacksonville Jaguars",
+              "file": "/reports/2026/wk9/JAX.pdf",
+              "bytes": 8773324,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Jacksonville Jaguars - 2026 Wk9.pdf"
+            },
+            {
+              "team": "KC",
+              "name": "Kansas City Chiefs",
+              "file": "/reports/2026/wk9/KC.pdf",
+              "bytes": 8701665,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Kansas City Chiefs - 2026 Wk9.pdf"
+            },
+            {
+              "team": "LAC",
+              "name": "Los Angeles Chargers",
+              "file": "/reports/2026/wk9/LAC.pdf",
+              "bytes": 8710216,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Los Angeles Chargers - 2026 Wk9.pdf"
+            },
+            {
+              "team": "LAR",
+              "name": "Los Angeles Rams",
+              "file": "/reports/2026/wk9/LAR.pdf",
+              "bytes": 8883181,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Los Angeles Rams - 2026 Wk9.pdf"
+            },
+            {
+              "team": "LV",
+              "name": "Las Vegas Raiders",
+              "file": "/reports/2026/wk9/LV.pdf",
+              "bytes": 8696629,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Las Vegas Raiders - 2026 Wk9.pdf"
+            },
+            {
+              "team": "MIA",
+              "name": "Miami Dolphins",
+              "file": "/reports/2026/wk9/MIA.pdf",
+              "bytes": 8927561,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Miami Dolphins - 2026 Wk9.pdf"
+            },
+            {
+              "team": "MIN",
+              "name": "Minnesota Vikings",
+              "file": "/reports/2026/wk9/MIN.pdf",
+              "bytes": 8679856,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Minnesota Vikings - 2026 Wk9.pdf"
+            },
+            {
+              "team": "NE",
+              "name": "New England Patriots",
+              "file": "/reports/2026/wk9/NE.pdf",
+              "bytes": 8715351,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "New England Patriots - 2026 Wk9.pdf"
+            },
+            {
+              "team": "NO",
+              "name": "New Orleans Saints",
+              "file": "/reports/2026/wk9/NO.pdf",
+              "bytes": 8795265,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "New Orleans Saints - 2026 Wk9.pdf"
+            },
+            {
+              "team": "NYG",
+              "name": "New York Giants",
+              "file": "/reports/2026/wk9/NYG.pdf",
+              "bytes": 8762306,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "New York Giants - 2026 Wk9.pdf"
+            },
+            {
+              "team": "NYJ",
+              "name": "New York Jets",
+              "file": "/reports/2026/wk9/NYJ.pdf",
+              "bytes": 8680124,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "New York Jets - 2026 Wk9.pdf"
+            },
+            {
+              "team": "PHI",
+              "name": "Philadelphia Eagles",
+              "file": "/reports/2026/wk9/PHI.pdf",
+              "bytes": 8719816,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Philadelphia Eagles - 2026 Wk9.pdf"
+            },
+            {
+              "team": "PIT",
+              "name": "Pittsburgh Steelers",
+              "file": "/reports/2026/wk9/PIT.pdf",
+              "bytes": 8755104,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Pittsburgh Steelers - 2026 Wk9.pdf"
+            },
+            {
+              "team": "SEA",
+              "name": "Seattle Seahawks",
+              "file": "/reports/2026/wk9/SEA.pdf",
+              "bytes": 8692906,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Seattle Seahawks - 2026 Wk9.pdf"
+            },
+            {
+              "team": "SF",
+              "name": "San Francisco 49ers",
+              "file": "/reports/2026/wk9/SF.pdf",
+              "bytes": 8717667,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "San Francisco 49ers - 2026 Wk9.pdf"
+            },
+            {
+              "team": "TB",
+              "name": "Tampa Bay Buccaneers",
+              "file": "/reports/2026/wk9/TB.pdf",
+              "bytes": 8758200,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Tampa Bay Buccaneers - 2026 Wk9.pdf"
+            },
+            {
+              "team": "TEN",
+              "name": "Tennessee Titans",
+              "file": "/reports/2026/wk9/TEN.pdf",
+              "bytes": 8665072,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Tennessee Titans - 2026 Wk9.pdf"
+            },
+            {
+              "team": "WAS",
+              "name": "Washington Commanders",
+              "file": "/reports/2026/wk9/WAS.pdf",
+              "bytes": 8661823,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Washington Commanders - 2026 Wk9.pdf"
+            }
+          ]
+        },
+        {
+          "week": 8,
+          "reports": [
+            {
+              "team": "ARI",
+              "name": "Arizona Cardinals",
+              "file": "/reports/2026/wk8/ARI.pdf",
+              "bytes": 8661240,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Arizona Cardinals - 2026 Wk8.pdf"
+            },
+            {
+              "team": "ATL",
+              "name": "Atlanta Falcons",
+              "file": "/reports/2026/wk8/ATL.pdf",
+              "bytes": 9185215,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Atlanta Falcons - 2026 Wk8.pdf"
+            },
+            {
+              "team": "BAL",
+              "name": "Baltimore Ravens",
+              "file": "/reports/2026/wk8/BAL.pdf",
+              "bytes": 9078706,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Baltimore Ravens - 2026 Wk8.pdf"
+            },
+            {
+              "team": "BUF",
+              "name": "Buffalo Bills",
+              "file": "/reports/2026/wk8/BUF.pdf",
+              "bytes": 9089306,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Buffalo Bills - 2026 Wk8.pdf"
+            },
+            {
+              "team": "CAR",
+              "name": "Carolina Panthers",
+              "file": "/reports/2026/wk8/CAR.pdf",
+              "bytes": 2615899,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Carolina Panthers - 2026 Wk8.pdf"
+            },
+            {
+              "team": "CHI",
+              "name": "Chicago Bears",
+              "file": "/reports/2026/wk8/CHI.pdf",
+              "bytes": 9281048,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Chicago Bears - 2026 Wk8.pdf"
+            },
+            {
+              "team": "CIN",
+              "name": "Cincinnati Bengals",
+              "file": "/reports/2026/wk8/CIN.pdf",
+              "bytes": 8551678,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Cincinnati Bengals - 2026 Wk8.pdf"
+            },
+            {
+              "team": "CLE",
+              "name": "Cleveland Browns",
+              "file": "/reports/2026/wk8/CLE.pdf",
+              "bytes": 9905248,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Cleveland Browns - 2026 Wk8.pdf"
+            },
+            {
+              "team": "DAL",
+              "name": "Dallas Cowboys",
+              "file": "/reports/2026/wk8/DAL.pdf",
+              "bytes": 9399643,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Dallas Cowboys - 2026 Wk8.pdf"
+            },
+            {
+              "team": "DEN",
+              "name": "Denver Broncos",
+              "file": "/reports/2026/wk8/DEN.pdf",
+              "bytes": 2331668,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Denver Broncos - 2026 Wk8.pdf"
+            }
+          ]
+        },
+        {
+          "week": 3,
+          "reports": [
+            {
+              "team": "CAR",
+              "name": "Carolina Panthers",
+              "file": "/reports/2026/wk3/CAR.pdf",
+              "bytes": 14782298,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "2026_3_CarolinaPanthers.pdf"
+            },
+            {
+              "team": "CHI",
+              "name": "Chicago Bears",
+              "file": "/reports/2026/wk3/CHI.pdf",
+              "bytes": 13547799,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "2026_3_ChicagoBears.pdf"
+            },
+            {
+              "team": "TEN",
+              "name": "Tennessee Titans",
+              "file": "/reports/2026/wk3/TEN.pdf",
+              "bytes": 6092586,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "2026_3_TNTitans.pdf"
+            }
+          ]
+        },
+        {
+          "week": 2,
+          "reports": [
+            {
+              "team": "ARI",
+              "name": "Arizona Cardinals",
+              "file": "/reports/2026/wk2/ARI.pdf",
+              "bytes": 6449969,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Arizona Cardinals - 2026 Wk2.pdf"
+            },
+            {
+              "team": "ATL",
+              "name": "Atlanta Falcons",
+              "file": "/reports/2026/wk2/ATL.pdf",
+              "bytes": 6863796,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Atlanta Falcons - 2026 Wk2.pdf"
+            },
+            {
+              "team": "BAL",
+              "name": "Baltimore Ravens",
+              "file": "/reports/2026/wk2/BAL.pdf",
+              "bytes": 6823392,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Baltimore Ravens - 2026 Wk2.pdf"
+            },
+            {
+              "team": "CAR",
+              "name": "Carolina Panthers",
+              "file": "/reports/2026/wk2/CAR.pdf",
+              "bytes": 6128526,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "2026_2_CarolinaPanthers.pdf"
+            },
+            {
+              "team": "CHI",
+              "name": "Chicago Bears",
+              "file": "/reports/2026/wk2/CHI.pdf",
+              "bytes": 5190040,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "2026_2_ChicagoBears.pdf"
+            },
+            {
+              "team": "NYG",
+              "name": "New York Giants",
+              "file": "/reports/2026/wk2/NYG.pdf",
+              "bytes": 5685430,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "2026_2_NYGiants.pdf"
+            },
+            {
+              "team": "PIT",
+              "name": "Pittsburgh Steelers",
+              "file": "/reports/2026/wk2/PIT.pdf",
+              "bytes": 4097372,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "2026_2_PittsSteelers.pdf"
+            },
+            {
+              "team": "TEN",
+              "name": "Tennessee Titans",
+              "file": "/reports/2026/wk2/TEN.pdf",
+              "bytes": 5695627,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "2026_2_TNTitans.pdf"
+            }
+          ]
+        },
+        {
+          "week": 1,
+          "reports": [
+            {
+              "team": "ARI",
+              "name": "Arizona Cardinals",
+              "file": "/reports/2026/wk1/ARI.pdf",
+              "bytes": 6417918,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Arizona Cardinals - 2026 Wk1.pdf"
+            },
+            {
+              "team": "ATL",
+              "name": "Atlanta Falcons",
+              "file": "/reports/2026/wk1/ATL.pdf",
+              "bytes": 6831835,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Atlanta Falcons - 2026 Wk1.pdf"
+            },
+            {
+              "team": "BAL",
+              "name": "Baltimore Ravens",
+              "file": "/reports/2026/wk1/BAL.pdf",
+              "bytes": 6791402,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Baltimore Ravens - 2026 Wk1.pdf"
+            },
+            {
+              "team": "BUF",
+              "name": "Buffalo Bills",
+              "file": "/reports/2026/wk1/BUF.pdf",
+              "bytes": 6846649,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Buffalo Bills - 2026 Wk1.pdf"
+            },
+            {
+              "team": "CAR",
+              "name": "Carolina Panthers",
+              "file": "/reports/2026/wk1/CAR.pdf",
+              "bytes": 7900349,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Carolina Panthers - 2026 Wk1.pdf"
+            },
+            {
+              "team": "CHI",
+              "name": "Chicago Bears",
+              "file": "/reports/2026/wk1/CHI.pdf",
+              "bytes": 7078016,
+              "pages": null,
+              "updated": "2026-11-13",
+              "source": "Chicago Bears - 2026 Wk1.pdf"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
