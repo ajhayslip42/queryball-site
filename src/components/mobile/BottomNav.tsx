@@ -2,12 +2,12 @@
  * BottomNav — the phone navigation bar (hidden at lg and up).
  *
  * The desktop header's "Decks" menu is hidden on phones, which left mobile
- * users with no way to find the other eight decks. Five tabs: Player, Team
- * (opens a chooser), League (opens a chooser), Studio, More.
+ * users with no way to find the other eight decks. Six tabs: Player, Team
+ * (opens a chooser), Matchup, Lines, Studio, More (league decks and the rest).
  */
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { User, Users, Swords, Table2, Menu, X } from 'lucide-react'
+import { User, Users, Swords, Target, Table2, Menu, X } from 'lucide-react'
 import clsx from 'clsx'
 
 type Item = { to: string; label: string; sub?: string }
@@ -74,6 +74,9 @@ export default function BottomNav() {
         </button>
         <NavLink to="/matchup" className={clsx('qb-navitem', loc.pathname === '/matchup' && 'on')}>
           <Swords className="h-5 w-5" /><span>Matchup</span>
+        </NavLink>
+        <NavLink to="/lines" className={clsx('qb-navitem', loc.pathname === '/lines' && 'on')}>
+          <Target className="h-5 w-5" /><span>Lines</span>
         </NavLink>
         <NavLink to="/studio" className={clsx('qb-navitem', isStudio && 'on')}>
           <Table2 className="h-5 w-5" /><span>Studio</span>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, BookOpen, BarChart3, Table2, FileText, Swords } from 'lucide-react'
+import { ArrowRight, BookOpen, BarChart3, Table2, FileText, Swords, Target } from 'lucide-react'
 import AskBox from '@/components/mobile/AskBox'
 import { SITUATIONS } from '@/lib/situations'
 import { DEFAULTS, encodeSlicers } from '@/lib/slicers'
@@ -87,12 +87,19 @@ export default function Home() {
 
       {/* ============================== ARTICLES / PROJECTIONS ============================== */}
       <section className="bg-paper">
-        <div className="max-w-[1400px] mx-auto px-6 py-10 grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="max-w-[1400px] mx-auto px-6 py-10 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link to="/matchup" className="qcard p-5 hover-grow block">
             <Swords className="h-4 w-4 text-accent" />
             <div className="mt-2 font-display text-xl italic">Matchup</div>
             <p className="mt-1 text-[13px] text-muted leading-relaxed">
               Three players, this week's game, and the defense they face — read for their position and ranked against all 32.
+            </p>
+          </Link>
+          <Link to="/lines" className="qcard p-5 hover-grow block">
+            <Target className="h-4 w-4 text-accent" />
+            <div className="mt-2 font-display text-xl italic">Lines</div>
+            <p className="mt-1 text-[13px] text-muted leading-relaxed">
+              Type the line your book posted — player prop, spread, total — and see the odds it hits, with the game log, the splits and the opponent behind the number.
             </p>
           </Link>
           <Link to="/studio" className="qcard p-5 hover-grow block">

@@ -1,0 +1,36 @@
+QueryBall — Lines module (Update 5)
+====================================
+
+10 files. No new npm packages. No data files (the nightly job owns those).
+
+1. Open a command prompt in your project folder and run:
+       git pull
+
+2. Drag everything from this zip onto the project folder.
+   Choose "Replace" for anything it asks about.
+   (The folders in the zip — src, public — match the project's folders.)
+
+3. Optional preview before it goes live:
+       npm run dev
+   then open the address it prints and go to /lines. Ctrl+C to stop.
+
+4. Push it:
+       git add -A
+       git commit -m "Lines module"
+       git push
+
+5. GitHub → Actions tab → the run goes green in about 3 minutes.
+   queryball.com/lines is live.
+
+What's in the zip
+-----------------
+src/pages/Lines.tsx                the page
+src/lib/lines.ts                   markets, SQL, the read (all the arithmetic)
+src/components/lines/Charts.tsx    the small SVG charts
+src/App.tsx                        route /lines
+src/components/Header.tsx          "Lines" in the header
+src/components/mobile/BottomNav.tsx "Lines" tab on phones (six tabs now)
+src/pages/Home.tsx                 Lines card on the home page
+src/styles/globals.css             Lines styles (appended at the end)
+public/sitemap.xml                 /lines added
+README.md                          two new how-to rows

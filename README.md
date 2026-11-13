@@ -6,7 +6,9 @@ QueryBall is a custom NFL stats site: six rollup decks with five reports each,
 under 47+ slicers, with a dedicated fantasy tab on every deck, a weekly
 projections page, a Studio (pick rows and metrics, get a table), a query
 gallery, a fantasy Matchup page (three players, this week's game, the defense
-they face read for their position), and the weekly team report PDFs. Fantasy
+they face read for their position), a Lines page (type a sportsbook line — player
+prop, spread, total, team prop — and see the odds it hits, with the game log,
+the splits and the opponent behind the number), and the weekly team report PDFs. Fantasy
 points everywhere follow one scoring setting (PPR / half / standard / custom). On phones the decks use a
 report-first shell: a sticky context bar, a bottom filter sheet with Simple/Pro
 modes and one-tap Situations, a contents screen per deck, and swipe-to-move
@@ -54,6 +56,7 @@ queryball-site/
 │   │   ├── useMatchCount.ts← live "N plays match" for the filter sheet
 │   │   ├── scoring.ts      ← league scoring store (PPR/half/std/custom) every fantasy number follows
 │   │   ├── matchup.ts      ← Matchup SQL: next games, player weeks, defense profiles, metric rows
+│   │   ├── lines.ts        ← Lines: market catalogue by position, SQL (games, splits, halves, opponent, team markets), the read
 │   │   ├── nfl.ts          ← team list, color tokens, formatters, headshot/logo URLs
 │   │   ├── db.ts           ← DuckDB-WASM wrapper
 │   │   ├── useQuery.ts
@@ -70,6 +73,7 @@ queryball-site/
 │   │   ├── Home.tsx
 │   │   ├── Articles.tsx, Article.tsx
 │   │   ├── Matchup.tsx               ← fantasy matchup comparison (3 players, this week's game, defense read)
+│   │   ├── Lines.tsx                 ← line evaluator: team → player/team → line type → the book's number → P(over) + evidence
 │   │   ├── Studio.tsx, Gallery.tsx   ← pivot builder + saved/curated queries
 │   │   ├── WeeklyReports.tsx         ← team report PDFs (reads public/reports/manifest.json)
 │   │   ├── Projections.tsx
@@ -104,6 +108,8 @@ queryball-site/
 | Refresh stats data | `python scripts/refresh-data.py` (writes parquet files into `public/data/`, now including `snaps.parquet` and a current-season `games.parquet`) |
 | Change default fantasy scoring | Visitors set it under Scoring in the filter sheet / rail; the default preset is `DEFAULT_SCORING` in `src/lib/scoring.ts` |
 | Add a Matchup metric | Add a row to `CARD_ROWS` (player card) or `DEF_METRICS` (defense read) in `src/lib/matchup.ts`; the SQL in the same file must produce the column |
+| Add a line type to Lines | Add an entry to `MARKETS` (player) or `TEAM_MARKETS` (team) in `src/lib/lines.ts`: label, positions, usage test, distribution (normal / poisson), the `player_week` column or play-by-play measure, ladder rungs. Player markets get the splits and opponent card for free |
+| Change how the Lines read is built | `read()` in `src/lib/lines.ts` — the 65/35 recency blend, the opponent factor cap, the script slope (`SLOPE_ATT`), the 60/40 blend and the 15% skew flag are all plain constants |
 | Publish weekly team PDFs | `python scripts/publish-reports.py <folder of PDFs>` then redeploy. Needs `pip install pymupdf` for compression. |
 | Add a curated Studio query | Build it in `/studio`, copy the link, paste the part after `?` into `src/content/gallery.json`. |
 | Add a Situation | Append to `SITUATIONS` in `src/lib/situations.ts`. |

@@ -1,0 +1,106 @@
+================================================================================
+ QueryBall weekly automation
+ The full click-by-click walkthrough is the Claude doc:
+   "QueryBall Weekly Automation - Setup Walkthrough"
+ This file is the same thing on one page, for when you are at the PC.
+================================================================================
+
+WHAT IS IN THIS ZIP
+  vba\Module1.bas            -> imported in Step 2
+  vba\Module2.bas            -> imported in Step 2
+  scripts\build_exportfiles.py -> copy to <repo>\scripts\
+  Run-Weekly.ps1             -> copy to <repo>\
+
+  <repo> = C:\Users\ajhay\OneDrive\Desktop\QueryBall Rework
+
+
+STEP 1 - DELETE THE DEAD TAB                                      20 seconds
+  Open the workbook. Right-click the "dataarchive" tab -> Delete -> Delete.
+  File -> Save As -> ReportBaseFile_Final_2026wk8.xlsm
+  Keep "Excel Macro-Enabled Workbook (*.xlsm)" as the type.
+  The file should drop from ~25 MB to about 4 MB.
+
+  That tab is 133,431 rows x 54 columns and NOTHING in the workbook refers to
+  it. The theme macro was reading all 7.2 million of its cells, one at a time,
+  twice per team, 32 teams. That is where your 20 minutes went.
+
+
+STEP 2 - SWAP THE TWO MACRO MODULES                               10 minutes
+  Alt+F11 to open the VBA editor. Ctrl+R if you do not see the tree on the left.
+  Expand "Modules".
+
+  Right-click Module1 -> Remove Module1 -> No (do not export)
+  File -> Import File -> vba\Module1.bas -> Open
+
+  Right-click Module2 -> Remove Module2 -> No (do not export)
+  File -> Import File -> vba\Module2.bas -> Open
+
+  Debug -> Compile VBAProject.   Nothing happens = good.
+  Error = screenshot it and send it to me, do not hand-edit.
+
+  Alt+Q, then Ctrl+S to save. Close Excel.
+
+
+STEP 3 - PYTHON PACKAGES                                          2 minutes
+  Open a Command Prompt (Windows key, type cmd, Enter):
+
+      python --version          (if not recognized: install from python.org
+                                 and TICK "Add python.exe to PATH")
+      pip install pandas pyarrow openpyxl pymupdf
+
+
+STEP 4 - PUT THE FILES IN PLACE                                   2 minutes
+  Copy Run-Weekly.ps1              -> <repo>\
+  Copy scripts\build_exportfiles.py -> <repo>\scripts\
+
+  Then, in a Command Prompt:
+      cd "C:\Users\ajhay\OneDrive\Desktop\QueryBall Rework"
+      git add scripts/build_exportfiles.py Run-Weekly.ps1
+      git commit -m "weekly automation"
+      git push
+
+
+STEP 5 - FIRST RUN (watch this one)                               ~6 minutes
+  Windows key, type powershell, Enter. Paste:
+
+      powershell -ExecutionPolicy Bypass -File "C:\Users\ajhay\OneDrive\Desktop\QueryBall Rework\Run-Weekly.ps1"
+
+  Do not open Excel while it runs.
+  Full log lands in <repo>\WeeklyReportQueryball\Logs\
+
+  SEND ME THIS LINE:     macro finished in N minutes
+
+  Switches:  -NoPublish       data + PDFs only, no push
+             -PublishOnly     skip Excel, publish what is in Outputs
+             -AllowPartialFtn include a week FTN has not finished charting
+             -KeepExcelOpen   leave the workbook open at the end
+
+
+STEP 6 - SCHEDULE IT (only after Step 5 works)                    2 minutes
+  Task Scheduler -> Create Task (NOT "Create Basic Task")
+    General  : name "QueryBall weekly"
+               Run whether user is logged on or not
+               leave "Do not store password" UNTICKED
+               tick "Run with highest privileges"
+    Triggers : New -> Weekly -> Tuesday -> 7:00:00 AM
+    Actions  : New -> Start a program
+               Program/script:  powershell.exe
+               Add arguments:   -ExecutionPolicy Bypass -File "C:\Users\ajhay\OneDrive\Desktop\QueryBall Rework\Run-Weekly.ps1"
+               Start in:        C:\Users\ajhay\OneDrive\Desktop\QueryBall Rework
+    Settings : tick "Run task as soon as possible after a scheduled start is missed"
+               tick "Stop the task if it runs longer than" -> 2 hours
+
+  Test it: right-click the task -> Run. Then check the log.
+
+  Your PC must be awake at that time - Excel has to render the deck.
+  The 4 AM nightly site-data refresh is unaffected; that runs on GitHub.
+
+
+COMMON PROBLEMS
+  'python' is not recognized ....... reinstall Python, tick Add to PATH
+  no complete new week yet ......... FTN has not charted it. Not an error.
+  hangs at PrintAllTeamsUnattended . Module2 did not import; redo that half
+  the macro produced no PDFs ....... create <repo>\WeeklyReportQueryball\Outputs
+  git push failed .................. PDFs are committed locally; pull then push
+  compile error in Step 2 .......... screenshot it, send it to me
+================================================================================

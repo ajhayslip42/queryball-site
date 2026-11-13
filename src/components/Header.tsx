@@ -25,6 +25,7 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-7 text-sm">
           <DecksMenu />
           <NavItem to="/matchup">Matchup</NavItem>
+          <NavItem to="/lines">Lines</NavItem>
           <NavItem to="/studio">Studio</NavItem>
           <NavItem to="/articles">Articles</NavItem>
           <NavItem to="/reports">Weekly Reports</NavItem>
