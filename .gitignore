@@ -18,3 +18,5 @@ venv/
 .dev.vars*
 !.dev.vars.example
 !.env.example
+WeeklyReportQueryball/Outputs/
+2026export.xlsx
