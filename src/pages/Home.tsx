@@ -38,7 +38,7 @@ export default function Home() {
     <>
       {/* ============================== HERO ============================== */}
       <section className="border-b border-line">
-        <div className="max-w-[1400px] mx-auto px-6 py-10 lg:py-14 grid lg:grid-cols-12 gap-8 items-end">
+        <div className="max-w-[1400px] mx-auto px-6 py-10 lg:py-14 grid lg:grid-cols-12 gap-8 items-end lg:items-stretch">
           <div className="lg:col-span-7">
             <p className="eyebrow mb-3">Football stats with the context that matters</p>
             <h1 className="font-display text-4xl lg:text-5xl xl:text-6xl leading-[1.02] tracking-tight text-ink">
@@ -67,13 +67,15 @@ export default function Home() {
               ))}
             </div>
           </div>
+          {/* Thesis cards. On desktop the three share the full height of the
+           * left column, so their top and bottom edges line up with it. */}
           <div className="lg:col-span-5 lg:pl-6">
-            <div className="space-y-3">
-              <ThesisCard head={<>Outputs without context are <em>decoration.</em></>}
+            <div className="flex flex-col gap-3 lg:h-full">
+              <ThesisCard n="01" head={<>Outputs without context are <em>decoration.</em></>}
                 sub="Cumulative totals flatten the variance that decides every Sunday." />
-              <ThesisCard head={<>Context leads to <em>understanding.</em></>}
+              <ThesisCard n="02" head={<>Context leads to <em>understanding.</em></>}
                 sub="Down, distance, score, weather, formation — the variables that change what a number means." />
-              <ThesisCard head={<>Understanding leads to <em>action.</em></>}
+              <ThesisCard n="03" head={<>Understanding leads to <em>action.</em></>}
                 sub="A filterable read on the only stat that matters: the next one." />
             </div>
           </div>
@@ -149,11 +151,14 @@ function SituationsRow() {
   )
 }
 
-function ThesisCard({ head, sub }: { head: React.ReactNode; sub: string }) {
+function ThesisCard({ n, head, sub }: { n: string; head: React.ReactNode; sub: string }) {
   return (
-    <div className="qcard p-3.5">
-      <p className="font-display text-lg leading-snug">{head}</p>
-      <p className="mt-1 text-[12.5px] text-muted">{sub}</p>
+    <div className="qcard p-3.5 lg:px-6 lg:py-5 lg:flex-1 flex items-center gap-4 lg:gap-5">
+      <span className="hidden lg:block font-display italic text-4xl xl:text-5xl leading-none text-accent/40 select-none">{n}</span>
+      <div>
+        <p className="font-display text-lg lg:text-[22px] xl:text-2xl leading-snug">{head}</p>
+        <p className="mt-1 lg:mt-1.5 text-[12.5px] lg:text-sm text-muted leading-relaxed">{sub}</p>
+      </div>
     </div>
   )
 }

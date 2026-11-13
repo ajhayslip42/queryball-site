@@ -175,7 +175,11 @@ export default function Studio() {
               <BarTile data={chartData} height={Math.max(220, chartData.length * 18)} color={PALETTE.accent} formatY={(v: number) => formatMetric(v, mets[0].fmt)} />
             </div>
           )}
-          <div className="qcard overflow-hidden">
+          <div className="qcard overflow-hidden relative">
+            {/* Faded logo behind the table. It sits on top with multiply
+             * blending so it shows through every row, never blocks clicks,
+             * and is included in the shared PNG. Strength: .qb-watermark in globals.css. */}
+            {rows.length > 0 && <div className="qb-watermark" aria-hidden="true"><img src="/logo.png" alt="" /></div>}
             <div className="overflow-x-auto max-h-[70vh]">
               <table className="qb-table qb-studio-table w-full">
                 <thead>

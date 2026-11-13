@@ -484,6 +484,15 @@ html.qb-collapsed .qb-minilogo { display: block; }
 }
 .qb-studio-table thead th { position: sticky; top: 0; background: #2A3B47; color: #fff; z-index: 2; }
 .qb-studio-table thead th:first-child { z-index: 3; background: #2A3B47; }
+/* Faded QueryBall logo behind the Studio table. Change `opacity` to make it
+   stronger (0.12) or fainter (0.05). The logo file has a white background;
+   multiply blending makes that white disappear over the rows. */
+.qb-watermark {
+  position: absolute; inset: 40px 0 28px 0; z-index: 4; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  mix-blend-mode: multiply; opacity: 0.09;
+}
+.qb-watermark img { width: 460px; max-width: 58%; max-height: 82%; object-fit: contain; filter: grayscale(0.2); }
 
 /* =====================================================================
    Collapsing header (phones/tablets). useCollapsingHeader() toggles

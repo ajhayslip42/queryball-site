@@ -1,5 +1,7 @@
 QUERYBALL - HOME PAGE + HEADER REDESIGN (Nov 13, 2026)
-6 changed files. No new packages. No data files.
+8 changed files. No new packages. No data files.
+This zip REPLACES the first one from this morning. It is safe to use whether or
+not you already pushed the first one.
 
 HOW TO INSTALL
 1. Open the Command Prompt (Start menu > type "cmd" > Enter).
@@ -17,7 +19,7 @@ HOW TO INSTALL
    Command Prompt when you are done looking.
 6. Back in the Command Prompt, run these three lines one at a time:
       git add -A
-      git commit -m "home: header order, compact reports, situations strip, tool links"
+      git commit -m "home: thesis cards fill column; studio: logo watermark"
       git push
 7. Wait about 3 minutes. GitHub builds and publishes it for you.
    To watch it: github.com/ajhayslip42/queryball-site > Actions tab > green check.
@@ -25,7 +27,9 @@ HOW TO INSTALL
 
 WHAT CHANGED
   src/components/Header.tsx            Order is now Decks, Studio, Lines, Weekly Reports, Articles, Matchup. Projections removed.
-  src/pages/Home.tsx                   Compact report cards, situations strip, six quick links, "The tools" row.
+  src/pages/Home.tsx                   Compact report cards, situations strip, six quick links, "The tools" row. Thesis cards now fill the right column on desktop.
+  src/pages/Studio.tsx                 Faded QueryBall logo behind any table with rows (also appears in shared PNGs).
+  src/styles/globals.css               The .qb-watermark style. Change "opacity: 0.09" to make the logo stronger or fainter.
   src/components/Footer.tsx            Projections link removed; same order as the header.
   src/components/mobile/BottomNav.tsx  Projections removed from the phone "More" menu.
   index.html                           Projections removed from the no-JavaScript fallback text.
