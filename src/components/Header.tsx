@@ -22,17 +22,18 @@ export default function Header() {
         <Link to="/" className="flex items-center" aria-label="QueryBall">
           <img src="/logo.png" alt="QueryBall" className="h-9 lg:h-14 w-auto" />
         </Link>
-        <nav className="hidden md:flex items-center gap-7 text-sm">
+        {/* Order set Nov 13, 2026. Projections is parked: the page and its
+         * /projections route still exist, it just isn't linked from anywhere. */}
+        <nav className="hidden md:flex items-center gap-5 lg:gap-7 text-sm whitespace-nowrap">
           <DecksMenu />
-          <NavItem to="/matchup">Matchup</NavItem>
-          <NavItem to="/lines">Lines</NavItem>
           <NavItem to="/studio">Studio</NavItem>
-          <NavItem to="/articles">Articles</NavItem>
+          <NavItem to="/lines">Lines</NavItem>
           <NavItem to="/reports">Weekly Reports</NavItem>
-          <NavItem to="/projections">Projections</NavItem>
+          <NavItem to="/articles">Articles</NavItem>
+          <NavItem to="/matchup">Matchup</NavItem>
         </nav>
         <Link to="/decks/single-player"
-          className="hidden md:inline-flex items-center px-4 py-2 bg-accent2 text-paper text-sm rounded-full hover:bg-accent transition-colors">
+          className="hidden lg:inline-flex items-center px-4 py-2 bg-accent2 text-paper text-sm rounded-full hover:bg-accent transition-colors">
           Open a deck →
         </Link>
       </div>

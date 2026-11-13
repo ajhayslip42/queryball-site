@@ -22,9 +22,8 @@ const MORE: Item[] = [
   { to: '/', label: 'Home' },
   { to: '/decks/league-production', label: 'League Production', sub: 'Leaderboards by situation' },
   { to: '/decks/league-defense', label: 'League Defense', sub: 'Defensive rankings' },
-  { to: '/articles', label: 'Articles' },
   { to: '/reports', label: 'Weekly Reports', sub: 'Team report PDFs' },
-  { to: '/projections', label: 'Projections' },
+  { to: '/articles', label: 'Articles' },
   { to: '/gallery', label: 'Query Gallery', sub: 'Saved Studio queries' },
 ]
 

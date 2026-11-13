@@ -28,12 +28,12 @@ export default function Footer() {
         <div>
           <p className="eyebrow mb-3">More</p>
           <ul className="space-y-2 text-sm">
-            <li><Link to="/matchup" className="text-muted hover:text-ink">Matchup</Link></li>
             <li><Link to="/studio" className="text-muted hover:text-ink">Studio</Link></li>
             <li><Link to="/gallery" className="text-muted hover:text-ink">Query Gallery</Link></li>
-            <li><Link to="/articles" className="text-muted hover:text-ink">Articles</Link></li>
+            <li><Link to="/lines" className="text-muted hover:text-ink">Lines</Link></li>
             <li><Link to="/reports" className="text-muted hover:text-ink">Weekly Reports</Link></li>
-            <li><Link to="/projections" className="text-muted hover:text-ink">Projections</Link></li>
+            <li><Link to="/articles" className="text-muted hover:text-ink">Articles</Link></li>
+            <li><Link to="/matchup" className="text-muted hover:text-ink">Matchup</Link></li>
           </ul>
         </div>
       </div>

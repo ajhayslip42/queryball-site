@@ -1,0 +1,41 @@
+QUERYBALL - HOME PAGE + HEADER REDESIGN (Nov 13, 2026)
+6 changed files. No new packages. No data files.
+
+HOW TO INSTALL
+1. Open the Command Prompt (Start menu > type "cmd" > Enter).
+2. Go to the project folder. Type this and press Enter:
+      cd "C:\Users\ajhay\OneDrive\Desktop\QueryBall Rework"
+3. Get the latest from GitHub (the nightly bot adds data most mornings):
+      git pull
+4. In File Explorer, right-click queryball-home-redesign.zip > Extract All...
+   Set the destination to:
+      C:\Users\ajhay\OneDrive\Desktop\QueryBall Rework
+   Click Extract. When Windows asks, choose "Replace the files in the destination".
+5. (Optional) Preview on your PC first:
+      npm run dev
+   Open the http://localhost:5173 link it prints. Press Ctrl+C in the
+   Command Prompt when you are done looking.
+6. Back in the Command Prompt, run these three lines one at a time:
+      git add -A
+      git commit -m "home: header order, compact reports, situations strip, tool links"
+      git push
+7. Wait about 3 minutes. GitHub builds and publishes it for you.
+   To watch it: github.com/ajhayslip42/queryball-site > Actions tab > green check.
+8. Open queryball.com and press Ctrl+F5 (hard refresh) to see it.
+
+WHAT CHANGED
+  src/components/Header.tsx            Order is now Decks, Studio, Lines, Weekly Reports, Articles, Matchup. Projections removed.
+  src/pages/Home.tsx                   Compact report cards, situations strip, six quick links, "The tools" row.
+  src/components/Footer.tsx            Projections link removed; same order as the header.
+  src/components/mobile/BottomNav.tsx  Projections removed from the phone "More" menu.
+  index.html                           Projections removed from the no-JavaScript fallback text.
+  public/sitemap.xml                   Projections removed so Google stops listing it.
+
+TO BRING PROJECTIONS BACK LATER
+The page itself was not deleted - queryball.com/projections still works if typed in.
+To relink it, add one line to the <nav> in src/components/Header.tsx:
+      <NavItem to="/projections">Projections</NavItem>
+
+TO ADD A NEW TOOL TO THE HOME PAGE LATER
+Add one entry to the TOOLS list near the top of src/pages/Home.tsx.
+It appears as both a quick-link button and a card automatically.

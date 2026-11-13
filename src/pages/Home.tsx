@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, BookOpen, BarChart3, Table2, FileText, Swords, Target } from 'lucide-react'
+import { ArrowRight, BookOpen, Table2, FileText, Swords, Target, LayoutGrid } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import AskBox from '@/components/mobile/AskBox'
 import { SITUATIONS } from '@/lib/situations'
 import { DEFAULTS, encodeSlicers } from '@/lib/slicers'
@@ -14,6 +15,22 @@ const DECKS = [
   { slug: 'team-defense',      title: 'Team Defense (Against)', desc: 'Production allowed by position, per defense.' },
   { slug: 'team-tendencies',   title: 'Team Situational Tendencies', desc: 'Pass/run rates, personnel, tempo, by game state.' },
   { slug: 'league-defense',    title: 'League Defense Rankings',desc: 'Cross-league defensive rankings.' },
+]
+
+// Everything that isn't a deck, in the same order as the header.
+// `quick` is the short label on the hero button; `desc` is the card copy.
+// Add a new tool here and it shows up in both places.
+const TOOLS: { to: string; title: string; quick: string; icon: LucideIcon; desc: string }[] = [
+  { to: '/studio',   title: 'Studio',         quick: 'Build your own table', icon: Table2,
+    desc: 'Pick rows and metrics, get a table. Same filters as the decks. Save it, share it.' },
+  { to: '/lines',    title: 'Lines',          quick: 'Check a line',         icon: Target,
+    desc: 'Type the line your book posted and see the odds it hits, with the game log and splits behind it.' },
+  { to: '/reports',  title: 'Weekly Reports', quick: 'Weekly team reports',  icon: FileText,
+    desc: 'One PDF per team per week: season to date with league context, splits and personnel.' },
+  { to: '/articles', title: 'Articles',       quick: 'Read the analysis',    icon: BookOpen,
+    desc: 'Short pieces anchored to a specific slicer view, each linking back into the deck.' },
+  { to: '/matchup',  title: 'Matchup',        quick: 'Compare a matchup',    icon: Swords,
+    desc: 'Three players, this week\'s game, and the defense each one faces, ranked against all 32.' },
 ]
 
 export default function Home() {
@@ -38,24 +55,20 @@ export default function Home() {
               <p className="eyebrow mb-2">Start with a player, a team, or a question</p>
               <AskBox />
             </div>
-            <div className="mt-5 flex flex-wrap items-center gap-2.5">
-              <Link to="/decks/single-player" className="px-4 py-2 bg-ink text-paper rounded-full text-sm font-medium hover:bg-accent transition-colors inline-flex items-center gap-1.5">
-                Open the decks <ArrowRight className="h-3.5 w-3.5" />
+            {/* Quick links: the decks first, then one button per tool. */}
+            <div className="mt-5 grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-2 sm:gap-2.5">
+              <Link to="/decks/single-player" className="justify-center sm:justify-start px-3.5 sm:px-4 py-2 bg-ink text-paper rounded-full text-[13px] sm:text-sm font-medium whitespace-nowrap hover:bg-accent transition-colors inline-flex items-center gap-1.5">
+                <LayoutGrid className="h-3.5 w-3.5" /> Open the decks <ArrowRight className="h-3.5 w-3.5" />
               </Link>
-              <Link to="/studio" className="px-4 py-2 border border-line rounded-full text-sm font-medium hover:border-ink transition-colors">
-                Build your own table
-              </Link>
-              <Link to="/articles" className="px-4 py-2 border border-line rounded-full text-sm font-medium hover:border-ink transition-colors">
-                Read the analysis
-              </Link>
+              {TOOLS.map(t => (
+                <Link key={t.to} to={t.to} className="px-3.5 py-2 border border-line bg-paper rounded-full text-[13px] sm:text-sm font-medium hover:border-ink transition-colors inline-flex items-center gap-1.5 whitespace-nowrap">
+                  <t.icon className="h-3.5 w-3.5 text-accent shrink-0" /> {t.quick}
+                </Link>
+              ))}
             </div>
           </div>
           <div className="lg:col-span-5 lg:pl-6">
             <div className="space-y-3">
-              <div className="qcard p-3.5">
-                <p className="eyebrow mb-2">Try a situation</p>
-                <SituationsRow />
-              </div>
               <ThesisCard head={<>Outputs without context are <em>decoration.</em></>}
                 sub="Cumulative totals flatten the variance that decides every Sunday." />
               <ThesisCard head={<>Context leads to <em>understanding.</em></>}
@@ -67,69 +80,56 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ============================== SITUATIONS STRIP ============================== */}
+      {/* One slim row between the hero and the reports. Wraps on desktop,
+       * swipes sideways on phones so it never costs more than one line. */}
+      <section className="border-b border-line bg-paper">
+        <div className="max-w-[1400px] mx-auto px-6 py-3 lg:flex lg:items-start lg:gap-4">
+          <p className="eyebrow mb-2 lg:mb-0 lg:pt-[7px] shrink-0">Try a situation</p>
+          <SituationsRow />
+        </div>
+      </section>
+
       {/* ============================== DECKS ============================== */}
       <section className="bg-cream border-b border-line">
-        <div className="max-w-[1400px] mx-auto px-6 py-10">
-          <div className="mb-6">
-            <h2 className="font-display text-2xl md:text-3xl tracking-tight">The reports.</h2>
+        <div className="max-w-[1400px] mx-auto px-6 py-6 lg:py-7">
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <h2 className="font-display text-xl md:text-2xl tracking-tight">The reports.</h2>
+            <p className="hidden sm:block text-[12.5px] text-muted">Eight decks. Every page filters by situation.</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-2.5">
             {DECKS.map(d => (
-              <Link key={d.slug} to={`/decks/${d.slug}`}
-                className="qcard px-4 py-3 hover-grow group flex flex-col gap-1">
-                <h3 className="font-display text-lg leading-tight">{d.title}</h3>
-                <p className="text-[12.5px] text-muted leading-snug">{d.desc}</p>
+              <Link key={d.slug} to={`/decks/${d.slug}`} title={d.desc}
+                className="qcard px-3 py-2 lg:px-3.5 lg:py-2.5 hover-grow group flex items-center justify-between gap-2">
+                <span className="min-w-0">
+                  <span className="block font-display text-[14.5px] lg:text-base leading-tight">{d.title}</span>
+                  <span className="hidden sm:block mt-0.5 text-[11.5px] text-muted leading-snug truncate">{d.desc}</span>
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted2 group-hover:text-accent transition-colors" />
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ============================== ARTICLES / PROJECTIONS ============================== */}
+      {/* ============================== TOOLS ============================== */}
       <section className="bg-paper">
-        <div className="max-w-[1400px] mx-auto px-6 py-10 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Link to="/matchup" className="qcard p-5 hover-grow block">
-            <Swords className="h-4 w-4 text-accent" />
-            <div className="mt-2 font-display text-xl italic">Matchup</div>
-            <p className="mt-1 text-[13px] text-muted leading-relaxed">
-              Three players, this week's game, and the defense they face — read for their position and ranked against all 32.
-            </p>
-          </Link>
-          <Link to="/lines" className="qcard p-5 hover-grow block">
-            <Target className="h-4 w-4 text-accent" />
-            <div className="mt-2 font-display text-xl italic">Lines</div>
-            <p className="mt-1 text-[13px] text-muted leading-relaxed">
-              Type the line your book posted — player prop, spread, total — and see the odds it hits, with the game log, the splits and the opponent behind the number.
-            </p>
-          </Link>
-          <Link to="/studio" className="qcard p-5 hover-grow block">
-            <Table2 className="h-4 w-4 text-accent" />
-            <div className="mt-2 font-display text-xl italic">Studio</div>
-            <p className="mt-1 text-[13px] text-muted leading-relaxed">
-              Pick rows and metrics, get a table. Same filters as the decks, arranged your way. Save it, share it.
-            </p>
-          </Link>
-          <Link to="/reports" className="qcard p-5 hover-grow block">
-            <FileText className="h-4 w-4 text-accent" />
-            <div className="mt-2 font-display text-xl italic">Weekly Reports</div>
-            <p className="mt-1 text-[13px] text-muted leading-relaxed">
-              One PDF per team per week: the season-to-date summary with league context, splits and personnel.
-            </p>
-          </Link>
-          <Link to="/articles" className="qcard p-5 hover-grow block">
-            <BookOpen className="h-4 w-4 text-accent" />
-            <div className="mt-2 font-display text-xl italic">Articles</div>
-            <p className="mt-1 text-[13px] text-muted leading-relaxed">
-              Short pieces anchored to a specific slicer view. Each one ends with a link back into the deck.
-            </p>
-          </Link>
-          <Link to="/projections" className="qcard p-5 hover-grow block">
-            <BarChart3 className="h-4 w-4 text-accent" />
-            <div className="mt-2 font-display text-xl italic">Projections</div>
-            <p className="mt-1 text-[13px] text-muted leading-relaxed">
-              Weekly model output, refreshed alongside the data. Sortable, filterable, downloadable.
-            </p>
-          </Link>
+        <div className="max-w-[1400px] mx-auto px-6 py-8 lg:py-10">
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <h2 className="font-display text-xl md:text-2xl tracking-tight">The tools.</h2>
+            <p className="hidden sm:block text-[12.5px] text-muted">Same data, pointed at a specific job.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {TOOLS.map(t => (
+              <Link key={t.to} to={t.to} className="qcard p-4 hover-grow block">
+                <div className="flex items-center gap-2">
+                  <t.icon className="h-4 w-4 text-accent shrink-0" />
+                  <span className="font-display text-lg italic leading-tight">{t.title}</span>
+                </div>
+                <p className="mt-1.5 text-[12.5px] text-muted leading-relaxed">{t.desc}</p>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
     </>
@@ -140,11 +140,11 @@ function SituationsRow() {
   // Each chip is a link into the League Production deck with that situation
   // already applied — the fastest way to see what a filter does.
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {SITUATIONS.slice(0, 10).map(s => (
-        <Link key={s.id} to={`/decks/league-production?${encodeSlicers({ ...DEFAULTS, ...s.patch }).toString()}`} className="qb-sitchip" title={s.sets}>{s.label}</Link>
+    <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-6 px-6 lg:mx-0 lg:px-0 lg:flex-wrap lg:overflow-visible">
+      {SITUATIONS.slice(0, 12).map(s => (
+        <Link key={s.id} to={`/decks/league-production?${encodeSlicers({ ...DEFAULTS, ...s.patch }).toString()}`} className="qb-sitchip shrink-0 whitespace-nowrap" title={s.sets}>{s.label}</Link>
       ))}
-      <Link to="/decks/league-production" className="qb-sitchip ghost">all situations →</Link>
+      <Link to="/decks/league-production" className="qb-sitchip ghost shrink-0 whitespace-nowrap">all situations →</Link>
     </div>
   )
 }
