@@ -242,7 +242,7 @@ export function oppAllowedSql(pos: Pos, m: Market, season: number): string {
     SELECT w.opponent_team AS def, w.game_id, w.week, w.recent_team AS team, sum(COALESCE(${expr},0))::double AS v, max(t.opp_pts) AS def_pts, max(t.pts) AS off_pts
     FROM player_week w LEFT JOIN tg t ON t.game_id = w.game_id AND t.team = w.recent_team
     WHERE w.season = ${season} AND w.season_type = 'REG' AND w.position = ${sq(pos)}
-    GROUP BY 1, 2, 3, 4 ORDER BY def, week`
+    GROUP BY 1, 2, 3, 4 ORDER BY 1, 3`
 }
 export type OppProfile = { team: string; rank: number; n: number; per_g: number; league: number; games: number; last: OppRow[]; table: { def: string; per_g: number }[] }
 export function oppProfile(rows: OppRow[], opp: string): OppProfile | null {

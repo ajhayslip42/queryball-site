@@ -256,7 +256,7 @@ export function defaultPlayersSql(pos: PosSel, season: number): string {
     WITH nw AS (SELECT min(week) AS week FROM games WHERE season = ${season} AND home_score IS NULL),
     playing AS (SELECT home_team t FROM games WHERE season = ${season} AND week = (SELECT week FROM nw) UNION SELECT away_team FROM games WHERE season = ${season} AND week = (SELECT week FROM nw)),
     latest AS (SELECT player_id, recent_team, position, player_display_name, row_number() OVER (PARTITION BY player_id ORDER BY week DESC) rn FROM player_week WHERE season = ${season})
-    SELECT pw.player_id, l.player_display_name name, l.position, l.recent_team team, sum(pw.fantasy_points_ppr) fp
+    SELECT pw.player_id, l.player_display_name AS name, l.position, l.recent_team AS team, sum(pw.fantasy_points_ppr) AS fp
     FROM player_week pw JOIN latest l ON l.player_id = pw.player_id AND l.rn = 1
     WHERE pw.season = ${season} AND l.position IN ${posList} AND l.recent_team IN (SELECT t FROM playing)
     GROUP BY 1,2,3,4 ORDER BY fp DESC LIMIT ${pos === 'FLEX' ? 3 : 3}`

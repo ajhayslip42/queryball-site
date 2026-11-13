@@ -242,6 +242,7 @@ export default function Lines() {
           </div>
         )}
         {team && pParam && loading && <div className="mt-4 animate-pulse rounded-lg bg-chalk h-64" />}
+        {[seasonQ, rosterQ, nextQ, gamesQ, splitsQ, halvesQ, oppQ, tgQ, tqQ, tpQ].filter(q => q.error).slice(0, 1).map((q, i) => <p key={i} className="mt-3 text-[11.5px] text-[#A0594B] bg-[#F3E3DF] border border-[#E4C9C2] rounded px-3 py-2">One of the queries behind this page failed: {q.error!.message.split('\n')[0]}. Try again, or send this message to Andrew.</p>)}
         {team && pid && !rosterQ.loading && !player && <p className="mt-4 text-sm text-muted">That player isn't on the {teamName(team)} roster in the data this season — pick another player above.</p>}
         {team && pParam && (isTeam || player) && !loading && line == null && <p className="mt-4 text-sm text-muted">No games in the data for this pick{scope === 'season' ? ' this season — try Career' : ''}.</p>}
 
@@ -292,7 +293,7 @@ export default function Lines() {
               <>
                 <Splits rows={splitsQ.data ?? []} market={market} pos={player!.position} halves={halvesQ.data ? toHalves(halvesQ.data) : []} games={games} evalLine={evalLine} scopeNote={scope === 'career' ? `${Math.min(...splitSeasons)}–${season}` : String(season)} />
                 <div className="grid lg:grid-cols-3 gap-3">
-                  <OppCard opp={opp} pos={player!.position} market={market} next={next} />
+                  <OppCard opp={opp} pos={player!.position} market={market} next={next} error={oppQ.error} loading={oppQ.loading} />
                   <ContextCard games={games} evalLine={evalLine} />
                   <div className="qcard p-3"><CardTitle title="Game log" sub="most recent first" /><GameLogTable rows={rows} evalLine={evalLine} scope={scope} isSpread={false} /></div>
                 </div>
@@ -497,9 +498,10 @@ function ContextCard({ games, evalLine }: { games: GameRow[]; evalLine: number }
   )
 }
 
-function OppCard({ opp, pos, market, next }: { opp: ReturnType<typeof oppProfile>; pos: Pos; market: Market; next: NextGame | null }) {
+function OppCard({ opp, pos, market, next, error, loading }: { opp: ReturnType<typeof oppProfile>; pos: Pos; market: Market; next: NextGame | null; error: Error | null; loading: boolean }) {
   if (!next) return <div className="qcard p-3"><CardTitle title="Opponent" sub="bye week" /><p className="text-[12px] text-muted">No defense to read this week.</p></div>
-  if (!opp) return <div className="qcard p-3"><CardTitle title={`${teamName(next.opp)} vs ${pos}s`} /><div className="animate-pulse rounded bg-chalk h-40" /></div>
+  if (!opp && loading) return <div className="qcard p-3"><CardTitle title={`${teamName(next.opp)} vs ${pos}s`} sub="loading…" /><div className="animate-pulse rounded bg-chalk h-40" /></div>
+  if (!opp) return <div className="qcard p-3"><CardTitle title={`${teamName(next.opp)} vs ${pos}s`} /><p className="text-[12px] text-[#A0594B]">{error ? `Couldn't load the opponent profile: ${error.message.split('\n')[0]}` : `No ${pos} games against ${teamName(next.opp)} in the data yet.`}</p></div>
   const base = marketByKey(market.oppKey) ?? market
   const cls = opp.rank <= 8 ? 'soft' : opp.rank >= opp.n - 7 ? 'tough' : 'mid'
   const top = opp.table[0]?.per_g || 1
