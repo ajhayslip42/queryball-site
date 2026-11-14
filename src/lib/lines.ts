@@ -114,7 +114,7 @@ export function rosterSql(team: string, season: number): string {
   return `
     SELECT pw.player_id, max(pw.player_display_name) AS name, max(pw.position) AS position, count(*)::int AS g,
       sum(pw.attempts)::int AS attempts, sum(pw.carries)::int AS carries, sum(pw.targets)::int AS targets, sum(pw.receptions)::int AS receptions,
-      round(sum(pw.fantasy_points_ppr),1) AS fp, max(pl.headshot) AS headshot, max(pl.jersey_number)::int AS jersey
+      round(sum(pw.fantasy_points_ppr),1) AS fp, CAST(NULL AS VARCHAR) AS headshot, max(pl.jersey_number)::int AS jersey
     FROM player_week pw LEFT JOIN players pl ON pl.gsis_id = pw.player_id
     WHERE pw.season = ${season} AND pw.season_type = 'REG' AND pw.recent_team = ${sq(team)} AND pw.position IN ('QB','RB','WR','TE')
     GROUP BY pw.player_id ORDER BY fp DESC`

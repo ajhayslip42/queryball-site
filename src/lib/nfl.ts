@@ -44,16 +44,24 @@ export const fmt = {
   },
 }
 
-/** nflverse hosts player headshots; URL pattern is stable. */
-export function headshotUrl(gsisId: string | null | undefined): string | undefined {
-  if (!gsisId) return undefined
-  return `https://static.www.nfl.com/image/private/f_auto,q_auto/league/api/headshots/${gsisId}`
+/**
+ * Player headshots and team wordmarks were hotlinked from NFL-hosted image
+ * servers. Those are NFL property, so the site no longer requests them: every
+ * caller falls back to the initials / abbreviation badge in team colours.
+ * Both functions stay as the single place to plug in a licensed image source
+ * later — return a URL here and every avatar on the site picks it up.
+ */
+export function headshotUrl(_gsisId: string | null | undefined): string | undefined {
+  return undefined
+}
+export function teamLogo(_team: string | null | undefined): string | undefined {
+  return undefined
 }
 
-/** Team logos hosted by nflverse. */
-export function teamLogo(team: string | null | undefined): string | undefined {
-  if (!team) return undefined
-  return `https://raw.githubusercontent.com/nflverse/nflverse-pbp/master/wordmarks/${team.toLowerCase()}.png`
+/** Where the numbers come from — shown in the footer credits. */
+export const DATA_CREDIT = {
+  nflverse: { name: 'nflverse', url: 'https://github.com/nflverse/nflverse-data', licence: 'CC BY 4.0', licenceUrl: 'https://creativecommons.org/licenses/by/4.0/' },
+  ftn: { name: 'FTN Data via nflverse', url: 'https://github.com/nflverse/nflverse-data/releases/tag/ftn_charting', licence: 'CC BY-SA 4.0', licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0/' },
 }
 
 export function seasonLabel(seasons: number[]): string {

@@ -32,10 +32,6 @@ export default function Header() {
           <NavItem to="/articles">Articles</NavItem>
           <NavItem to="/matchup">Matchup</NavItem>
         </nav>
-        <Link to="/decks/single-player"
-          className="hidden lg:inline-flex items-center px-4 py-2 bg-accent2 text-paper text-sm rounded-full hover:bg-accent transition-colors">
-          Open a deck →
-        </Link>
       </div>
     </header>
   )

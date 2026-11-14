@@ -117,7 +117,7 @@ function RoomOverview({ f }: { f: PosFilter }) {
       g.player_id id,
       g.player_display_name nm,
       g."position" pos,
-      max(pl.headshot) hs,
+      CAST(NULL AS VARCHAR) hs,
       count(distinct g.game_id) gp,
       sum(g.targets)::int tgt, sum(g.receptions)::int rec, sum(g.receiving_yards)::int recy, sum(g.receiving_tds)::int retd,
       sum(g.receiving_air_yards)::int reay, sum(g.receiving_yards_after_catch)::int yac,
@@ -203,7 +203,7 @@ function RoomOverview({ f }: { f: PosFilter }) {
             <div className="flex items-center gap-2 mb-2">
               {r.hs ? (
                 <img src={r.hs} alt="" className="w-10 h-10 rounded-full object-cover border border-line" />
-              ) : <div className="w-10 h-10 rounded-full bg-cream" />}
+              ) : <div className="w-10 h-10 rounded-full bg-cream flex items-center justify-center text-[11px] font-semibold text-muted flex-shrink-0">{initials(r.nm)}</div>}
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold text-ink truncate">{r.nm}</p>
                 <p className="text-[10px] text-muted num">

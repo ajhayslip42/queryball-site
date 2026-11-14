@@ -81,7 +81,7 @@ function RoomOverview({ pos }: { pos: Pos }) {
   const sql = `SELECT
       g.player_id id,
       g.player_display_name nm,
-      max(pl.headshot) hs,
+      CAST(NULL AS VARCHAR) hs,
       count(distinct g.game_id) gp,
       sum(g.attempts)::int att, sum(g.completions)::int cmp, sum(g.passing_yards)::int py, sum(g.passing_tds)::int ptd, sum(g.interceptions)::int intc,
       sum(g.carries)::int car, sum(g.rushing_yards)::int ry, sum(g.rushing_tds)::int rtd,
@@ -166,7 +166,7 @@ function RoomOverview({ pos }: { pos: Pos }) {
             <div className="flex items-center gap-2 mb-2">
               {r.hs ? (
                 <img src={r.hs} alt="" className="w-10 h-10 rounded-full object-cover border border-line" />
-              ) : <div className="w-10 h-10 rounded-full bg-cream" />}
+              ) : <div className="w-10 h-10 rounded-full bg-cream flex items-center justify-center text-[11px] font-semibold text-muted flex-shrink-0">{initials(r.nm)}</div>}
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-ink truncate">{r.nm}</p>
                 <p className="text-[10px] text-muted num">{r.gp} games</p>

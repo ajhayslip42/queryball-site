@@ -265,7 +265,7 @@ function PlayerCard({ c, win }: { c: Card; win: Win }) {
           <>
             <p className="text-[14px] font-bold text-accent2">{n.home ? 'vs' : '@'} {n.opp} <span className="font-normal text-muted text-[11px]">· {n.weekday.slice(0, 3)} {n.gametime}</span></p>
             <p className="text-[11px] text-muted">Spread {n.spread == null ? '–' : (n.spread > 0 ? '+' : '') + n.spread.toFixed(1)} · O/U {n.total ?? '–'} · <b className="text-ink">Implied {n.implied ?? '–'}</b></p>
-            <p className="text-[11px] text-muted">{n.roof || '—'} · {n.surface || '—'}{n.oppQb ? ` · opp QB ${n.oppQb}` : ''}</p>
+            <p className="text-[11px] text-muted">{n.roof || '—'} · {n.surface || '—'}{n.oppQb ? ` · proj. opp QB ${n.oppQb}` : ''}</p>
           </>
         ) : <p className="text-[13px] font-bold text-accent2">Bye week</p>}
       </div>

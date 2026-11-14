@@ -117,7 +117,13 @@ export default function Lines() {
     const med = median(vals)
     return dist === 'poisson' ? Math.max(0.5, Math.floor(med) + 0.5) : (intMarket ? Math.floor(med) + 0.5 : Math.round(med * 2) / 2)
   }, [vals.length, isTeam, tm?.key, next, dist, intMarket]) // eslint-disable-line react-hooks/exhaustive-deps
-  const line = lineParam != null && lineParam !== '' && !isNaN(Number(lineParam)) ? Number(lineParam) : defaultLine
+  // What the user has typed, verbatim — including nothing. null = untouched, so the default fills in.
+  // Kept separately from the URL so the box can sit empty while you retype (the URL drops empty values).
+  const [lineText, setLineText] = useState<string | null>(null)
+  useEffect(() => { setLineText(null) }, [pParam, mParam, team])
+  const typed = lineText != null ? lineText : lineParam
+  const line = typed != null && typed !== '' && !isNaN(Number(typed)) ? Number(typed) : typed === '' || (typed != null && isNaN(Number(typed))) ? null : defaultLine
+  const lineBlank = lineText === '' || (lineText != null && isNaN(Number(lineText)))
   const odds = parseOdds(oddsStr) ?? -110
   const implied = impliedProb(odds)
 
@@ -206,8 +212,8 @@ export default function Lines() {
               </Select>
             </Field>
             <Field label={lineInputLabel} className="lg:col-span-2">
-              <input type="number" inputMode="decimal" step={isTeam && tm!.key === 'ml' ? 5 : 0.5} value={lineParam ?? (line ?? '')} onChange={e => setParam({ l: e.target.value })}
-                placeholder={line != null ? String(line) : '—'} disabled={!pParam}
+              <input type="number" inputMode="decimal" step={isTeam && tm!.key === 'ml' ? 5 : 0.5} value={lineText ?? lineParam ?? (line ?? '')} onChange={e => { setLineText(e.target.value); setParam({ l: e.target.value }) }}
+                placeholder={defaultLine != null ? String(defaultLine) : '—'} disabled={!pParam}
                 className="qb-lineinput" aria-label="Line" />
             </Field>
             <Field label="Odds" className="lg:col-span-1">
@@ -244,7 +250,8 @@ export default function Lines() {
         {team && pParam && loading && <div className="mt-4 animate-pulse rounded-lg bg-chalk h-64" />}
         {[seasonQ, rosterQ, nextQ, gamesQ, splitsQ, halvesQ, oppQ, tgQ, tqQ, tpQ].filter(q => q.error).slice(0, 1).map((q, i) => <p key={i} className="mt-3 text-[11.5px] text-[#A0594B] bg-[#F3E3DF] border border-[#E4C9C2] rounded px-3 py-2">One of the queries behind this page failed: {q.error!.message.split('\n')[0]}. Try again, or send this message to Andrew.</p>)}
         {team && pid && !rosterQ.loading && !player && <p className="mt-4 text-sm text-muted">That player isn't on the {teamName(team)} roster in the data this season — pick another player above.</p>}
-        {team && pParam && (isTeam || player) && !loading && line == null && <p className="mt-4 text-sm text-muted">No games in the data for this pick{scope === 'season' ? ' this season — try Career' : ''}.</p>}
+        {team && pParam && (isTeam || player) && !loading && line == null && lineBlank && <p className="mt-4 text-sm text-muted">Type a line in the box above to evaluate it{defaultLine != null ? ` — the median here is ${defaultLine}` : ''}.</p>}
+        {team && pParam && (isTeam || player) && !loading && line == null && !lineBlank && <p className="mt-4 text-sm text-muted">No games in the data for this pick{scope === 'season' ? ' this season — try Career' : ''}.</p>}
 
         {/* ---------------- the evaluation ---------------- */}
         {team && pParam && !loading && line != null && rd && summary && evalLine != null && (
@@ -410,7 +417,7 @@ function NextBox({ next, team, rows, player, evalLine, isTeam, tmKey }: { next: 
     <div className="qcard p-3 bg-cream">
       {next ? (
         <>
-          <CardTitle title={`Week ${next.week} · ${next.home ? 'vs' : '@'} ${teamName(next.opp)}`} sub={`${next.weekday?.slice(0, 3) ?? ''} ${next.gametime ?? ''} · ${next.roof || 'outdoors'}${next.surface ? ` · ${next.surface}` : ''}${next.opp_qb ? ` · opp QB ${next.opp_qb}` : ''}`} />
+          <CardTitle title={`Week ${next.week} · ${next.home ? 'vs' : '@'} ${teamName(next.opp)}`} sub={`${next.weekday?.slice(0, 3) ?? ''} ${next.gametime ?? ''} · ${next.roof || 'outdoors'}${next.surface ? ` · ${next.surface}` : ''}${next.opp_qb ? ` · proj. opp QB ${next.opp_qb}` : ''}`} />
           <div className="grid grid-cols-4 gap-1.5">
             {([['Spread', fmtSpread(next.spread)], ['O/U', fmtNum(next.total)], ['Implied', fmtNum(next.implied)], ['ML', fmtOdds(next.ml)]] as [string, string][]).map(([k, v]) => <div key={k} className="rounded-md bg-paper border border-line px-2 py-1.5"><p className="text-[8.5px] uppercase tracking-wider text-muted">{k}</p><p className="text-[14px] font-bold text-accent2 num">{v}</p></div>)}
           </div>

@@ -10,9 +10,9 @@ import { useQuery } from '@/lib/useQuery'
 import type { Player, Position } from './players'
 
 // Latest team/position for each skill player who has weekly stats. Also joins
-// the players.parquet to pull in the headshot URL (nfl.com CDN).
+// the players.parquet (headshots are no longer displayed — see nfl.ts).
 const INDEX_SQL = `
-  SELECT pw.gsis_id, pw.name, pw.position, pw.team, pl.headshot
+  SELECT pw.gsis_id, pw.name, pw.position, pw.team, CAST(NULL AS VARCHAR) AS headshot
   FROM (
     SELECT gsis_id, name, position, team FROM (
       SELECT player_id AS gsis_id, player_display_name AS name, position,

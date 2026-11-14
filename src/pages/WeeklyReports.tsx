@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { FileText, ExternalLink, Download } from 'lucide-react'
 import clsx from 'clsx'
-import { teamLogo, TEAM_COLORS } from '@/lib/nfl'
+import { TEAM_COLORS } from '@/lib/nfl'
 
 type Report = { team: string; name: string; file: string; bytes: number; pages?: number | null; updated?: string }
 type Week = { week: number; reports: Report[] }
@@ -78,7 +78,6 @@ export default function WeeklyReports() {
                     <div className="flex items-center gap-2">
                       <div className="relative h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${TEAM_COLORS[r.team] ?? '#2A3B47'}14` }}>
                         <span className="text-[10px] font-bold" style={{ color: TEAM_COLORS[r.team] ?? '#2A3B47' }}>{r.team}</span>
-                        <img src={teamLogo(r.team)} alt="" className="absolute inset-0 m-auto h-6 w-auto" loading="lazy" onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
                       </div>
                       <div className="min-w-0">
                         <p className="text-[13px] font-semibold text-accent2 leading-tight">{r.name}</p>
